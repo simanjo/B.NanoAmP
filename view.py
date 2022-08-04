@@ -50,8 +50,48 @@ def _add_general_settings():
     )
     dpg.add_separator()
 
+def _add_filtlong_settings():
+    dpg.add_text("Filtlong Settings")
+    dpg.add_input_int(
+        label="min_length",
+        tag="filtlong_minlen",
+        default_value=1_000
+    )
+    dpg.add_separator()
+
+def _toggle_flye(sender):
+    dpg.configure_item("racon_skip", show=dpg.get_value(sender))
+
+def _add_assembler_settings():
+    dpg.add_text("Assembler Settings:")
+    with dpg.group(horizontal=True):
+        dpg.add_checkbox(
+            label="Flye",
+            tag="use_flye",
+            default_value=True,
+            callback=_toggle_flye
+        )
+        dpg.add_checkbox(
+            label="skip racon polishing",
+            tag="racon_skip", default_value=True
+        )
+    dpg.add_checkbox(
+        label="Raven",
+        tag="use_raven",
+        default_value=False
+    )
+    dpg.add_checkbox(
+        label="Miniasm",
+        tag="use_miniasm",
+        default_value=False
+    )
+
+    dpg.add_separator()
+
 def add_main_window():
     with dpg.window(tag="main_window", autosize=True, no_close=True, no_collapse=True):
         with dpg.tab_bar():
             with dpg.tab(label="Assembly Settings", tag="main_tab"):
                 _add_general_settings()
+                _add_filtlong_settings()
+                _add_assembler_settings()
