@@ -126,6 +126,7 @@ def _add_medaka_settings():
             label="Guppy Version", tag="medaka_guppy",
             default_value="", items=model.get_guppy_versions()
         )
+    dpg.add_separator()
 
 
 #################### Callbacks ####################
