@@ -2,7 +2,7 @@ import os
 
 import dearpygui.dearpygui as dpg
 
-import model
+import model, controller
 
 def add_file_dialog():
     dpg.add_file_dialog(
@@ -20,6 +20,10 @@ def add_main_window():
                 _add_filtlong_settings()
                 _add_assembler_settings()
                 _add_medaka_settings()
+                dpg.add_button(
+                    label="Execute Assembly Pipeline",
+                    callback=controller.execute_pipeline
+                )
 
 
 #################### Auxillary ####################
