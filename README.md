@@ -1,2 +1,2 @@
-# b.NanoAmP
+# B.NanoAmP
 Bacterial Nanopore Assembly Pipeline
