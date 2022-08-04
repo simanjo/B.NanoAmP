@@ -4,6 +4,25 @@ import dearpygui.dearpygui as dpg
 
 import model
 
+def add_file_dialog():
+    dpg.add_file_dialog(
+        label="Select Base Folder",
+        directory_selector=True, show=False,
+        callback=_choose_dir, tag="file_dialog",
+        width=500, height=400
+    )
+
+def add_main_window():
+    with dpg.window(tag="main_window", autosize=True, no_close=True, no_collapse=True):
+        with dpg.tab_bar():
+            with dpg.tab(label="Assembly Settings", tag="main_tab"):
+                _add_general_settings()
+                _add_filtlong_settings()
+                _add_assembler_settings()
+                _add_medaka_settings()
+
+
+#################### Auxillary ####################
 
 def _choose_dir(sender, app_data) -> None:
 
@@ -19,14 +38,6 @@ def _choose_dir(sender, app_data) -> None:
             os.path.join(fpath, os.pardir)
         )
     assert os.path.isdir(fpath)
-
-def add_file_dialog():
-    dpg.add_file_dialog(
-        label="Select Base Folder",
-        directory_selector=True, show=False,
-        callback=_choose_dir, tag="file_dialog",
-        width=500, height=400
-    )
 
 def _add_general_settings():
     dpg.add_text("General Settings")
@@ -61,9 +72,6 @@ def _add_filtlong_settings():
     )
     dpg.add_separator()
 
-def _toggle_flye(sender):
-    dpg.configure_item("racon_skip", show=dpg.get_value(sender))
-
 def _add_assembler_settings():
     dpg.add_text("Assembler Settings:")
     with dpg.group(horizontal=True):
@@ -87,7 +95,6 @@ def _add_assembler_settings():
         tag="use_miniasm",
         default_value=False
     )
-
     dpg.add_separator()
 
 def _add_medaka_settings():
@@ -116,14 +123,11 @@ def _add_medaka_settings():
             default_value="", items=model.get_guppy_versions()
         )
 
-def add_main_window():
-    with dpg.window(tag="main_window", autosize=True, no_close=True, no_collapse=True):
-        with dpg.tab_bar():
-            with dpg.tab(label="Assembly Settings", tag="main_tab"):
-                _add_general_settings()
-                _add_filtlong_settings()
-                _add_assembler_settings()
-                _add_medaka_settings()
+
+#################### Callbacks ####################
+
+def _toggle_flye(sender):
+    dpg.configure_item("racon_skip", show=dpg.get_value(sender))
 
 def _toggle_medaka_model(sender) -> None:
     state = dpg.get_value(sender)
