@@ -2,6 +2,8 @@ import os
 
 import dearpygui.dearpygui as dpg
 
+import model
+
 
 def _choose_dir(sender, app_data) -> None:
 
@@ -88,6 +90,32 @@ def _add_assembler_settings():
 
     dpg.add_separator()
 
+def _add_medaka_settings():
+    dpg.add_text("Medaka Settings:")
+    dpg.add_checkbox(
+        label="choose model manually",
+        tag="medaka_choose", default_value=False,
+        callback=_toggle_medaka_model
+    )
+    dpg.add_combo(
+        label="Model", tag="medaka_manumodel",
+        default_value="r104_e81_sup_g5015", items=model.get_models(),
+        show=False
+    )
+    with dpg.group(tag="medaka_automodel"):
+        dpg.add_combo(
+            label="FlowCell", tag="medaka_flowcell",
+            default_value="", items=model.get_flow_cells()
+        )
+        dpg.add_combo(
+            label="Device", tag="medaka_devices",
+            default_value="", items=model.get_devices()
+        )
+        dpg.add_combo(
+            label="Guppy Version", tag="medaka_guppy",
+            default_value="", items=model.get_guppy_versions()
+        )
+
 def add_main_window():
     with dpg.window(tag="main_window", autosize=True, no_close=True, no_collapse=True):
         with dpg.tab_bar():
@@ -95,3 +123,20 @@ def add_main_window():
                 _add_general_settings()
                 _add_filtlong_settings()
                 _add_assembler_settings()
+                _add_medaka_settings()
+
+def _toggle_medaka_model(sender) -> None:
+    state = dpg.get_value(sender)
+    dpg.configure_item(
+        "medaka_flowcell",
+        enabled= not state, no_arrow_button=state
+    )
+    dpg.configure_item(
+        "medaka_devices",
+        enabled=not state, no_arrow_button=state
+    )
+    dpg.configure_item(
+        "medaka_guppy",
+        enabled=not state, no_arrow_button=state
+    )
+    dpg.configure_item("medaka_manumodel", show=state)
