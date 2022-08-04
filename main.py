@@ -11,7 +11,10 @@ def _init_app():
 
 
 def _start_app():
-    dpg.create_viewport(title='B.NanoAmP', width=850, height=800)
+    dpg.create_viewport(
+        title='Bacterial Nanopore Assembly Pipeline',
+        width=850, height=800
+    )
     dpg.setup_dearpygui()
 
     dpg.show_viewport()
