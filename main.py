@@ -3,6 +3,7 @@
 import dearpygui.dearpygui as dpg
 
 import view
+from themes import custom_theme
 
 def _init_app():
 
@@ -11,6 +12,7 @@ def _init_app():
 
 
 def _start_app():
+    dpg.bind_theme(custom_theme())
     dpg.create_viewport(
         title='Bacterial Nanopore Assembly Pipeline',
         width=850, height=800
