@@ -101,8 +101,6 @@ class AssemblyStep(PipelineStep):
     def run(self, working_dir: str) -> None:
         if self.assembler == "Miniasm":
             dirname = os.path.split(working_dir)[1]
-            # overlap_dir = os.path.join(working_dir, "read_overlap")
-            # os.makedirs(overlap_dir)
             asm_dir = os.path.join(working_dir, f"{dirname}_miniasm_assembly")
             os.makedirs(asm_dir)
 
@@ -142,6 +140,22 @@ class AssemblyStep(PipelineStep):
             with open(polish_output, 'wb') as out_fh:
                 shutil.copyfileobj(proc.stdout, out_fh)
 
+            ################# HACK
+            # following awk '/^S/{print ">"$2"\n"$3}' assembly.gfa | fold > assembly.fasta
+            fasta_conv_awk = subprocess.Popen(
+                ["awk", "/^S/{print \">\"$2\"\\n\"$3}", polish_output],
+                stdout=subprocess.PIPE
+            )
+            fasta_conv_fold = subprocess.Popen(
+                ["fold"], stdin=fasta_conv_awk.stdout, stdout=subprocess.PIPE
+            )
+            asm_output = os.path.join(
+                asm_dir, f"{dirname}_assembly.fasta"
+            )
+            with open(asm_output, 'wb') as out_fh:
+                shutil.copyfileobj(fasta_conv_fold.stdout, out_fh)
+            ######################
+
         elif self.assembler == "Flye":
             assembler_call, env = _get_flye_call(
                 self.threads, working_dir
@@ -171,9 +185,6 @@ class AssemblyStep(PipelineStep):
             )
             asm_output = os.path.join(asm_dir, "assembly.fasta")
             with open(asm_output, 'wb') as out_fh:
-                # ugly HACK?
-                # use stdout PIPE as filelike input to copy
-                # implicitly calls communicate?
                 shutil.copyfileobj(proc.stdout, out_fh)
 
         else:
@@ -433,6 +444,8 @@ def _get_medaka_call(threads, assembler, mod, is_racon, prefix):
             fasta = os.path.join(prefix, f"{dirname}_flye_assembly", "assembly.fasta")
     elif assembler == "Raven":
         fasta = os.path.join(prefix, f"{dirname}_raven_assembly", "assembly.fasta")
+    elif assembler == "Miniasm":
+        fasta = os.path.join(prefix, f"{dirname}_miniasm_assembly", "assembly.fasta")
     else:
         raise NotImplemented(
             f"The assembly method {assembler} is not supported."
