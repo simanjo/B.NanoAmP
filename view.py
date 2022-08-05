@@ -121,7 +121,7 @@ def _add_assembler_settings():
     with dpg.group(horizontal=True):
         dpg.add_checkbox(
             label="Flye",
-            tag="use_flye",
+            tag="use_Flye",
             default_value=True,
             callback=_toggle_flye
         )
@@ -131,12 +131,12 @@ def _add_assembler_settings():
         )
     dpg.add_checkbox(
         label="Raven",
-        tag="use_raven",
+        tag="use_Raven",
         default_value=False
     )
     dpg.add_checkbox(
         label="Miniasm",
-        tag="use_miniasm",
+        tag="use_Miniasm",
         default_value=False
     )
     dpg.add_separator()

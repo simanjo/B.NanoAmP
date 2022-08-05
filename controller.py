@@ -45,19 +45,22 @@ def _setup_pipeline():
     steps = []
     steps.append(DuplexStep(threads))
 
+    genome_size = dpg.get_value("genome_size")
+    coverage = dpg.get_value("coverage")
     min_len = dpg.get_value("filtlong_minlen")
-    bases = dpg.get_value("filtlong_bases")
+    bases = int(genome_size * 1_000_000 * coverage)
     steps.append(FilterStep(min_len, bases))
 
-    assembler = dpg.get_value("assembler_sel")
-    steps.append(AssemblyStep(threads, assembler))
+    for assembler in model.get_assemblers():
+        if dpg.get_value(f"use_{assembler}"):
+            steps.append(AssemblyStep(threads, assembler))
 
-    is_racon = not dpg.get_value("racon_skip")
-    if assembler == "Flye" and is_racon:
-        steps.append(RaconPolishingStep(threads))
+            is_racon = not dpg.get_value("racon_skip")
+            if assembler == "Flye" and is_racon:
+                steps.append(RaconPolishingStep(threads))
 
-    model = dpg.get_value("medaka_manumodel")
-    steps.append(MedakaPolishingStep(threads, assembler, model, is_racon))
+            mod = dpg.get_value("medaka_manumodel")
+            steps.append(MedakaPolishingStep(threads, assembler, mod, is_racon))
     return steps, folder_iter()
 
 
