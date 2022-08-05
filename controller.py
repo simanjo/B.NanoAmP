@@ -21,6 +21,10 @@ def execute_pipeline():
 def _use_folder(path):
     if not path.is_dir() or not _has_fastq(path):
         return False
+    # safeguard against rerun from unclean environment
+    # we do not want to recurse deeper in original folder
+    if path.name.startswith("original"):
+        return False
     if dpg.get_value("skip_unclassified"):
         return not path.name.startswith("unclassified")
     return True
