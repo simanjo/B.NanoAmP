@@ -17,7 +17,7 @@ class DuplexStep(PipelineStep):
 
     def run(self, working_dir):
         duplex_call, env = _get_duplex_call(self.threads, working_dir)
-        print(f"running {duplex_call}")
+        # print(f"running {duplex_call}")
         proc = subprocess.run(
             duplex_call, capture_output=True, env=env
         )
@@ -71,7 +71,7 @@ class FilterStep(PipelineStep):
         filtlong_call, env = _get_filtlong_call(
             self.min_len, self.target_bases, working_dir
         )
-        print(f"running {filtlong_call}")
+        # print(f"running {filtlong_call}")
         proc = subprocess.Popen(
             filtlong_call, stdout=subprocess.PIPE, env=env
         )
@@ -106,11 +106,9 @@ class AssemblyStep(PipelineStep):
             asm_dir = os.path.join(working_dir, f"{dirname}_miniasm_assembly")
             os.makedirs(asm_dir)
 
-            print("running minimap2 first")
             minimap_call, env = _get_minimap_overlap(
                 self.threads, working_dir
             )
-            print(f"running {minimap_call}")
             proc = subprocess.Popen(
                 minimap_call, stdout=subprocess.PIPE, env=env
             )
@@ -118,15 +116,11 @@ class AssemblyStep(PipelineStep):
                 overlap_dir, f"{dirname}_overlap.paf.gz"
             )
             with gzip.open(read_overlap, 'wb') as out_fh:
-                # ugly HACK? Is this supposed to be ok?
-                # use stdout PIPE as filelike input to copy
-                # implicitly calls communicate?
                 shutil.copyfileobj(proc.stdout, out_fh)
 
             assembler_call, env = _get_miniasm_call(
                 self.threads, working_dir
             )
-            print(f"running {assembler_call}")
             proc = subprocess.Popen(
                 assembler_call, stdout=subprocess.PIPE, env=env
             )
@@ -143,7 +137,7 @@ class AssemblyStep(PipelineStep):
             assembler_call, env = _get_flye_call(
                 self.threads, working_dir
             )
-            print(f"running {assembler_call}")
+            # print(f"running {assembler_call}")
             proc = subprocess.run(
                 assembler_call, capture_output=True, env=env
             )
@@ -162,7 +156,7 @@ class AssemblyStep(PipelineStep):
             assembler_call, env = _get_raven_call(
                 self.threads, working_dir
             )
-            print(f"running {assembler_call}")
+            # print(f"running {assembler_call}")
             proc = subprocess.Popen(
                 assembler_call, stdout=subprocess.PIPE, env=env
             )
@@ -185,29 +179,17 @@ class CleanAssemblyStep(PipelineStep):
 
     def run(self, working_dir):
         dirname = os.path.split(working_dir)[1]
-        if self.assembler == "Miniasm":
-            overlap_dir = os.path.join(working_dir, "read_overlap")
-            asm_dir = os.path.join(working_dir, f"{dirname}_miniasm_assembly")
-            shutil.rmtree(overlap_dir)
-            shutil.rmtree(asm_dir)
-        elif self.assembler == "Flye":
-            asm_dir = os.path.join(working_dir, f"{dirname}_flye_assembly")
-            shutil.rmtree(asm_dir)
-            if self.is_racon:
-                mapping_dir = os.path.join(working_dir, "nanopore_mapping")
-                polish_dir = os.path.join(
-                    working_dir, f"{dirname}_racon_polishing"
-                )
-                shutil.rmtree(mapping_dir)
-                shutil.rmtree(polish_dir)
+        asm_name = f"{dirname}_{self.assembler.lower()}_assembly"
+        shutil.rmtree(os.path.join(working_dir, asm_name))
 
-        elif self.assembler == "Raven":
-            asm_dir = os.path.join(working_dir, f"{dirname}_raven_assembly")
-            shutil.rmtree(asm_dir)
-        else:
-            raise NotImplemented(
-                f"The assembly method {self.assembler} is not supported."
+        if self.is_racon:
+            mapping_dir = os.path.join(working_dir, "nanopore_mapping")
+            polish_dir = os.path.join(
+                working_dir, f"{dirname}_racon_polishing"
             )
+            shutil.rmtree(mapping_dir)
+            shutil.rmtree(polish_dir)
+
         medaka_dir = os.path.join(working_dir, "medaka_polished")
         shutil.rmtree(medaka_dir)
 
@@ -230,11 +212,10 @@ class RaconPolishingStep(PipelineStep):
         polish_dir = os.path.join(working_dir, f"{dirname}_racon_polishing")
         os.makedirs(polish_dir)
 
-        print("running minimap2 first")
         minimap_call, env = _get_minimap_mapping(
             self.threads, working_dir
         )
-        print(f"running {minimap_call}")
+        # print(f"running {minimap_call}")
         proc = subprocess.Popen(
             minimap_call, stdout=subprocess.PIPE, env=env
         )
@@ -250,7 +231,7 @@ class RaconPolishingStep(PipelineStep):
         polishing_call, env = _get_racon_call(
             self.threads, working_dir
         )
-        print(f"running {polishing_call}")
+        # print(f"running {polishing_call}")
         proc = subprocess.Popen(
             polishing_call, stdout=subprocess.PIPE, env=env
         )
@@ -276,7 +257,7 @@ class MedakaPolishingStep(PipelineStep):
             self.threads, self.assembler,
             self.model, self.is_racon, working_dir
         )
-        print(f"running {medaka_call}")
+        # print(f"running {medaka_call}")
         proc = subprocess.run(
             medaka_call, capture_output=True, env=env
         )
@@ -304,8 +285,6 @@ class FinalCleanStep(PipelineStep):
 
     def run(self, working_dir: str) -> None:
         dirname = os.path.split(working_dir)[1]
-        for entry in os.scandir(working_dir):
-            print(entry)
         os.remove(os.path.join(working_dir, f"{dirname}.fastq.gz"))
         for entry in os.scandir(os.path.join(working_dir, "original")):
             shutil.move(entry.path, working_dir)
@@ -401,12 +380,10 @@ def _get_minimap_mapping(threads, prefix):
 
 def _get_miniasm_call(threads, prefix):
     dirname = os.path.split(prefix)[1]
-    miniasm = [
-        "miniasm",
-        "-f",
-        f"{os.path.join(prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz')}",
-        f"{os.path.join(prefix, 'read_overlap', f'{dirname}_overlap.paf.gz')}"
-    ]
+    reads = os.path.join(prefix, "filtered_reads", f"{dirname}_filtered.fastq.gz")
+    asm_dir = os.path.join(prefix, f"{dirname}_miniasm_assembly")
+    overlap = os.path.join(asm_dir, f"{dirname}_overlap.paf.gz")
+    miniasm = ["miniasm", "-f", reads, overlap]
     miniasm_env = model.get_prefix('miniasm')
     env = {"PATH": f"{miniasm_env}:{os.environ['PATH']}"}
     return miniasm, env
