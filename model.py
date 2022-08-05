@@ -12,6 +12,8 @@ BINARIES = [
     "medaka"
     ]
 
+PREFIXES = {}
+
 def get_conda_ymls():
     res_dir = os.path.abspath(
         os.path.join(os.path.realpath(__file__), os.path.pardir, "ressources")
@@ -27,6 +29,8 @@ def get_conda_ymls():
         )
     ]
 
+def get_prefix(pkg):
+    return PREFIXES[pkg]
 
 def get_flow_cells():
     return []

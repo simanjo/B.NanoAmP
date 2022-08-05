@@ -64,7 +64,8 @@ def _setup_pipeline():
 #################### Conda Setup ####################
 
 def set_conda_envs(envs, prefs):
-    pass
+    prefixes = {pkg: os.path.join(pref, "bin") for pkg,(pref,_) in prefs.items()}
+    model.PREFIXES = prefixes
 
 def init_conda_envs():
     for name, yml in model.get_conda_ymls():
