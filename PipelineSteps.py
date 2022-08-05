@@ -216,8 +216,8 @@ class CleanAssemblyStep(PipelineStep):
             os.makedirs(asm_dir)
         polish_flag = "rm" if self.is_racon else "m"
         fasta_name = f"{dirname}_{self.assembler}_{polish_flag}_coverage.fasta"
-        # if (os.path.isfile(os.path.join(working_dir, fasta_name))):
-        shutil.move(os.path.join(working_dir, fasta_name), asm_dir)
+        if (os.path.isfile(os.path.join(working_dir, fasta_name))):
+            shutil.move(os.path.join(working_dir, fasta_name), asm_dir)
 
 class RaconPolishingStep(PipelineStep):
     def __init__(self, threads) -> None:
