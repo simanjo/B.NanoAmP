@@ -80,6 +80,9 @@ def _choose_dir(sender, app_data) -> None:
         )
     assert os.path.isdir(fpath)
 
+    dpg.set_value("bcfolder", fpath)
+    dpg.configure_item("bcfolder", show=True)
+
 def _add_general_settings():
     dpg.add_text("General Settings")
     with dpg.group(horizontal=True):
