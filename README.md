@@ -12,3 +12,18 @@ plus assembly choices:
 * [Miniasm](https://github.com/lh3/miniasm) + [Minipolish](https://github.com/rrwick/Minipolish)
 
 plus [medaka](https://github.com/nanoporetech/medaka) consensus.
+
+
+# Installation
+
+conda required (eg [miniconda](https://docs.conda.io/en/latest/miniconda.html))
+
+pip required
+
+install requirements
+
+`pip install -r requirements.txt`
+
+start GUI
+
+`python main.py`
