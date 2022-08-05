@@ -49,6 +49,13 @@ class DuplexStep(PipelineStep):
                     with gzip.open(entry.path, 'rb') as in_fh:
                         shutil.copyfileobj(in_fh, out_fh)
 
+class CleanDuplexStep(PipelineStep):
+    def __init__(self) -> None:
+        pass
+
+    def run(self, working_dir):
+        dirname = os.path.split(working_dir)[1]
+        shutil.rmtree(os.path.join(working_dir, f"{dirname}_split"))
 
 class FilterStep(PipelineStep):
 
@@ -77,6 +84,13 @@ class FilterStep(PipelineStep):
             # implicitly calls communicate?
             shutil.copyfileobj(proc.stdout, out_fh)
 
+class CleanFilterStep(PipelineStep):
+    def __init__(self) -> None:
+        pass
+
+    def run(self, working_dir):
+        dirname = os.path.split(working_dir)[1]
+        shutil.rmtree(os.path.join(working_dir, "filtered_reads"))
 
 class AssemblyStep(PipelineStep):
 
@@ -164,6 +178,47 @@ class AssemblyStep(PipelineStep):
                 f"The assembly method {self.assembler} is not supported."
             )
 
+class CleanAssemblyStep(PipelineStep):
+    def __init__(self, assembler, is_racon) -> None:
+        self.assembler = assembler
+        self.is_racon = is_racon and assembler == "Flye"
+
+    def run(self, working_dir):
+        dirname = os.path.split(working_dir)[1]
+        if self.assembler == "Miniasm":
+            overlap_dir = os.path.join(working_dir, "read_overlap")
+            asm_dir = os.path.join(working_dir, f"{dirname}_miniasm_assembly")
+            shutil.rmtree(overlap_dir)
+            shutil.rmtree(asm_dir)
+        elif self.assembler == "Flye":
+            asm_dir = os.path.join(working_dir, f"{dirname}_flye_assembly")
+            shutil.rmtree(asm_dir)
+            if self.is_racon:
+                mapping_dir = os.path.join(working_dir, "nanopore_mapping")
+                polish_dir = os.path.join(
+                    working_dir, f"{dirname}_racon_polishing"
+                )
+                shutil.rmtree(mapping_dir)
+                shutil.rmtree(polish_dir)
+
+        elif self.assembler == "Raven":
+            asm_dir = os.path.join(working_dir, f"{dirname}_raven_assembly")
+            shutil.rmtree(asm_dir)
+        else:
+            raise NotImplemented(
+                f"The assembly method {self.assembler} is not supported."
+            )
+        medaka_dir = os.path.join(working_dir, "medaka_polished")
+        shutil.rmtree(medaka_dir)
+
+        asm_dir = os.path.join(working_dir, "assemblies")
+        if not os.path.isdir(asm_dir):
+            os.makedirs(asm_dir)
+        polish_flag = "rm" if self.is_racon else "m"
+        fasta_name = f"{dirname}_{self.assembler}_{polish_flag}_coverage.fasta"
+        # if (os.path.isfile(os.path.join(working_dir, fasta_name))):
+        shutil.move(os.path.join(working_dir, fasta_name), asm_dir)
+
 class RaconPolishingStep(PipelineStep):
     def __init__(self, threads) -> None:
         self.threads = threads
@@ -242,6 +297,22 @@ class MedakaPolishingStep(PipelineStep):
             print(proc.returncode)
             print(proc.stdout.decode())
             print(proc.stderr.decode())
+
+class FinalCleanStep(PipelineStep):
+    def __init__(self) -> None:
+        pass
+
+    def run(self, working_dir: str) -> None:
+        dirname = os.path.split(working_dir)[1]
+        for entry in os.scandir(working_dir):
+            print(entry)
+        os.remove(os.path.join(working_dir, f"{dirname}.fastq.gz"))
+        for entry in os.scandir(os.path.join(working_dir, "original")):
+            shutil.move(entry.path, working_dir)
+        try:
+            os.rmdir(os.path.join(working_dir, "original"))
+        except OSError:
+            print("Couldn't delete copy of original files")
 
 
 

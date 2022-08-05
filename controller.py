@@ -4,8 +4,10 @@ import conda.cli.python_api as conda_api
 import dearpygui.dearpygui as dpg
 from packaging import version
 
-from PipelineSteps import DuplexStep, FilterStep, AssemblyStep
+from PipelineSteps import DuplexStep, FilterStep, AssemblyStep, FinalCleanStep
 from PipelineSteps import RaconPolishingStep, MedakaPolishingStep
+from PipelineSteps import CleanDuplexStep, CleanFilterStep
+from PipelineSteps import CleanAssemblyStep, FinalCleanStep
 import model
 
 
@@ -42,25 +44,35 @@ def _setup_pipeline():
         yield from (_ for _ in [bcfolder] if _has_fastq(_))
 
     threads = dpg.get_value("threads")
-    steps = []
-    steps.append(DuplexStep(threads))
-
+    keep_intermediate = dpg.get_value("keep_intermediate")
     genome_size = dpg.get_value("genome_size")
     coverage = dpg.get_value("coverage")
     min_len = dpg.get_value("filtlong_minlen")
     bases = int(genome_size * 1_000_000 * coverage)
+    medaka_mod = dpg.get_value("medaka_manumodel")
+    is_racon = not dpg.get_value("racon_skip")
+
+    steps = []
+    steps.append(DuplexStep(threads))
     steps.append(FilterStep(min_len, bases))
+    if not keep_intermediate:
+        steps.append(CleanDuplexStep())
 
     for assembler in model.get_assemblers():
         if dpg.get_value(f"use_{assembler}"):
             steps.append(AssemblyStep(threads, assembler))
 
-            is_racon = not dpg.get_value("racon_skip")
             if assembler == "Flye" and is_racon:
                 steps.append(RaconPolishingStep(threads))
 
-            mod = dpg.get_value("medaka_manumodel")
-            steps.append(MedakaPolishingStep(threads, assembler, mod, is_racon))
+            steps.append(
+                MedakaPolishingStep(threads, assembler, medaka_mod, is_racon)
+            )
+            if not keep_intermediate:
+                steps.append(CleanAssemblyStep(assembler, is_racon))
+    if not keep_intermediate:
+        steps.append(CleanFilterStep())
+        steps.append(FinalCleanStep())
     return steps, folder_iter()
 
 
