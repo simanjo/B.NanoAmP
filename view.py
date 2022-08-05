@@ -96,6 +96,11 @@ def _add_general_settings():
         tag="skip_unclassified",
         default_value=True
     )
+    dpg.add_checkbox(
+        label="keep intermediate results",
+        tag="keep_intermediate",
+        default_value=False
+    )
     dpg.add_input_int(
         label="Threads", tag="threads", default_value=8
     )
