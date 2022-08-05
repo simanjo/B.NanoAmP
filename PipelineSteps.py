@@ -371,7 +371,7 @@ def _get_medaka_call(threads, assembler, mod, is_racon, prefix):
         )
 
     medaka = [
-        medaka,
+        "medaka_consensus",
         "-i",
         f"{os.path.join(prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz')}",
         "-d", f"{fasta}",
