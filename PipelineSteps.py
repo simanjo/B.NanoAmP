@@ -331,7 +331,7 @@ def _get_minimap_mapping(threads, prefix):
 def _get_miniasm_call(threads, prefix):
     dirname = os.path.split(prefix)[1]
     miniasm = [
-        miniasm,
+        "miniasm",
         "-f",
         f"{os.path.join(prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz')}",
         f"{os.path.join(prefix, 'read_overlap', f'{dirname}_overlap.paf.gz')}"
