@@ -37,9 +37,9 @@ def _setup_pipeline():
 
 
     def folder_iter():
-        yield from (_ for _ in [bcfolder] if _has_fastq(_))
         yield from (entry.path for entry in os.scandir(bcfolder)
                     if _use_folder(entry))
+        yield from (_ for _ in [bcfolder] if _has_fastq(_))
 
     threads = dpg.get_value("threads")
     steps = []
