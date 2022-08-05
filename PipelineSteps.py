@@ -101,8 +101,8 @@ class AssemblyStep(PipelineStep):
     def run(self, working_dir: str) -> None:
         if self.assembler == "Miniasm":
             dirname = os.path.split(working_dir)[1]
-            overlap_dir = os.path.join(working_dir, "read_overlap")
-            os.makedirs(overlap_dir)
+            # overlap_dir = os.path.join(working_dir, "read_overlap")
+            # os.makedirs(overlap_dir)
             asm_dir = os.path.join(working_dir, f"{dirname}_miniasm_assembly")
             os.makedirs(asm_dir)
 
@@ -113,7 +113,7 @@ class AssemblyStep(PipelineStep):
                 minimap_call, stdout=subprocess.PIPE, env=env
             )
             read_overlap = os.path.join(
-                overlap_dir, f"{dirname}_overlap.paf.gz"
+                asm_dir, f"{dirname}_overlap.paf.gz"
             )
             with gzip.open(read_overlap, 'wb') as out_fh:
                 shutil.copyfileobj(proc.stdout, out_fh)
@@ -125,12 +125,21 @@ class AssemblyStep(PipelineStep):
                 assembler_call, stdout=subprocess.PIPE, env=env
             )
             asm_output = os.path.join(
-                asm_dir, f"{dirname}_assembly.gfa"
+                asm_dir, f"{dirname}_unpolished_assembly.gfa"
             )
             with open(asm_output, 'wb') as out_fh:
-                # ugly HACK? Is this supposed to be ok?
-                # use stdout PIPE as filelike input to copy
-                # implicitly calls communicate?
+                shutil.copyfileobj(proc.stdout, out_fh)
+
+            polish_call, env = _get_minipolish_call(
+                self.threads, working_dir
+            )
+            proc = subprocess.Popen(
+                polish_call, stdout=subprocess.PIPE, env=env
+            )
+            polish_output = os.path.join(
+                asm_dir, f"{dirname}_assembly.gfa"
+            )
+            with open(polish_output, 'wb') as out_fh:
                 shutil.copyfileobj(proc.stdout, out_fh)
 
         elif self.assembler == "Flye":
@@ -387,6 +396,17 @@ def _get_miniasm_call(threads, prefix):
     miniasm_env = model.get_prefix('miniasm')
     env = {"PATH": f"{miniasm_env}:{os.environ['PATH']}"}
     return miniasm, env
+
+def _get_minipolish_call(threads, prefix):
+    dirname = os.path.split(prefix)[1]
+    reads = os.path.join(prefix, "filtered_reads", f"{dirname}_filtered.fastq.gz")
+    asm_dir = os.path.join(prefix, f"{dirname}_miniasm_assembly")
+    assembly = os.path.join(asm_dir, f"{dirname}_unpolished_assembly.gfa")
+    minipolish = ["minipolish", "-t", f"{threads}", reads, assembly]
+    minipolish_env = model.get_prefix('minipolish')
+    env = {"PATH": f"{minipolish_env}:{os.environ['PATH']}"}
+    return minipolish, env
+
 
 def _get_racon_call(threads, prefix):
     dirname = os.path.split(prefix)[1]
