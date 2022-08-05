@@ -26,6 +26,43 @@ def add_main_window():
                 )
 
 
+def check_env_setup(force=False):
+    envs, prefs = controller.get_conda_setup()
+    status, missing = controller.check_pkgs(envs)
+    if status == "complete" and not force:
+        controller.set_conda_envs(envs, prefs)
+        return
+    print(prefs)
+    with dpg.window(modal=True, label="Checking Conda Setup", autosize=True, no_close=True, no_collapse=True, tag="conda_check"):
+        _display_conda_setup(envs)
+        dpg.add_spacer(height=20)
+        msg = f"Your conda setup is missing the required packages\n {missing}.\n"
+        msg += "Do you want to perform a fresh package setup now? (This might take a while...)"
+        dpg.add_text(msg)
+        dpg.add_spacer(height=20)
+        with dpg.group(horizontal=True):
+            dpg.add_button(label="Yes", callback=_handle_conda_init)
+            dpg.add_button(label="Abort", callback=dpg.stop_dearpygui)
+    return
+
+def _handle_conda_init(sender):
+    controller.init_conda_envs()
+    dpg.configure_item("conda_check", show=False)
+
+def _display_conda_setup(envs):
+    dpg.add_text("The following conda setup has been found:")
+    with dpg.table():
+        dpg.add_table_column(label="environment")
+        dpg.add_table_column(label="packages")
+
+        for name, pkgs in envs.items():
+            with dpg.table_row():
+                with dpg.table_cell():
+                    dpg.add_text(name)
+                with dpg.table_cell():
+                    for pkg in pkgs:
+                        dpg.add_text(pkg)
+
 #################### Auxillary ####################
 
 def _choose_dir(sender, app_data) -> None:

@@ -2,13 +2,14 @@
 
 import dearpygui.dearpygui as dpg
 
-import view
+import view, controller
 from themes import custom_theme
 
 def _init_app():
 
     view.add_file_dialog()
     view.add_main_window()
+    view.check_env_setup()
 
 
 def _start_app():
