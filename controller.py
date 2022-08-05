@@ -64,6 +64,18 @@ def init_conda_envs():
             raise OSError(ret, stderr)
         print(stdout)
 
+def check_pkgs(envs):
+    missing = []
+    available = [pkg for pkgs in envs.values() for pkg in pkgs]
+    for pkg_name in model.BINARIES:
+        if pkg_name not in available:
+            missing.append(pkg_name)
+    status = "complete" if not missing else "incomplete"
+    return status, missing
+
+def check_guppy():
+    pass
+
 def execute_pipeline():
     _setup_pipeline()
     _run_pipeline()
