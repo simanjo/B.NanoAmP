@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 import gzip, os, shutil, subprocess
 
+import model
 
 class PipelineStep(ABC):
 
@@ -15,10 +16,10 @@ class DuplexStep(PipelineStep):
         self.threads = threads
 
     def run(self, working_dir):
-        duplex_call = _get_duplex_call(self.threads, working_dir)
+        duplex_call, env = _get_duplex_call(self.threads, working_dir)
         print(f"running {duplex_call}")
         proc = subprocess.run(
-            duplex_call, capture_output=True
+            duplex_call, capture_output=True, env=env
         )
         if proc.returncode == 0:
             print(proc.returncode)
@@ -60,18 +61,18 @@ class FilterStep(PipelineStep):
         os.makedirs(filtered_dir)
 
         dirname = os.path.split(working_dir)[1]
-        filtlong_call = _get_filtlong_call(
+        filtlong_call, env = _get_filtlong_call(
             self.min_len, self.target_bases, working_dir
         )
         print(f"running {filtlong_call}")
         proc = subprocess.Popen(
-            filtlong_call, stdout=subprocess.PIPE
+            filtlong_call, stdout=subprocess.PIPE, env=env
         )
         filtered_reads = os.path.join(
             filtered_dir, f"{dirname}_filtered.fastq.gz"
         )
         with gzip.open(filtered_reads, 'wb') as out_fh:
-            # ugly HACK?
+            # ugly HACK? Is this supposed to be ok?
             # use stdout PIPE as filelike input to copy
             # implicitly calls communicate?
             shutil.copyfileobj(proc.stdout, out_fh)
@@ -92,34 +93,34 @@ class AssemblyStep(PipelineStep):
             os.makedirs(asm_dir)
 
             print("running minimap2 first")
-            minimap_call = _get_minimap_overlap(
+            minimap_call, env = _get_minimap_overlap(
                 self.threads, working_dir
             )
             print(f"running {minimap_call}")
             proc = subprocess.Popen(
-                minimap_call, stdout=subprocess.PIPE
+                minimap_call, stdout=subprocess.PIPE, env=env
             )
             read_overlap = os.path.join(
                 overlap_dir, f"{dirname}_overlap.paf.gz"
             )
             with gzip.open(read_overlap, 'wb') as out_fh:
-                # ugly HACK?
+                # ugly HACK? Is this supposed to be ok?
                 # use stdout PIPE as filelike input to copy
                 # implicitly calls communicate?
                 shutil.copyfileobj(proc.stdout, out_fh)
 
-            assembler_call = _get_miniasm_call(
+            assembler_call, env = _get_miniasm_call(
                 self.threads, working_dir
             )
             print(f"running {assembler_call}")
             proc = subprocess.Popen(
-                assembler_call, stdout=subprocess.PIPE
+                assembler_call, stdout=subprocess.PIPE, env=env
             )
             asm_output = os.path.join(
                 asm_dir, f"{dirname}_assembly.gfa"
             )
             with open(asm_output, 'wb') as out_fh:
-                # ugly HACK?
+                # ugly HACK? Is this supposed to be ok?
                 # use stdout PIPE as filelike input to copy
                 # implicitly calls communicate?
                 shutil.copyfileobj(proc.stdout, out_fh)
@@ -175,12 +176,12 @@ class RaconPolishingStep(PipelineStep):
         os.makedirs(polish_dir)
 
         print("running minimap2 first")
-        minimap_call = _get_minimap_mapping(
+        minimap_call, env = _get_minimap_mapping(
             self.threads, working_dir
         )
         print(f"running {minimap_call}")
         proc = subprocess.Popen(
-            minimap_call, stdout=subprocess.PIPE
+            minimap_call, stdout=subprocess.PIPE, env=env
         )
         mapping = os.path.join(
             mapping_dir, "mapping.sam"
@@ -191,12 +192,12 @@ class RaconPolishingStep(PipelineStep):
             # implicitly calls communicate?
             shutil.copyfileobj(proc.stdout, out_fh)
 
-        polishing_call = _get_racon_call(
+        polishing_call, env = _get_racon_call(
             self.threads, working_dir
         )
         print(f"running {polishing_call}")
         proc = subprocess.Popen(
-            polishing_call, stdout=subprocess.PIPE
+            polishing_call, stdout=subprocess.PIPE, env=env
         )
         polish_out = os.path.join(
            polish_dir, "racon.fasta"
@@ -232,7 +233,7 @@ class MedakaPolishingStep(PipelineStep):
             polish_flag = "rm" if self.is_racon else "m"
             fasta_name = f"{dirname}_{self.assembler}_{polish_flag}_coverage.fasta"
 
-            shutil.copyfile(
+            shutil.move(
                 os.path.join(working_dir, "medaka_polished", "consensus.fasta"),
                 os.path.join(working_dir, fasta_name)
             )
@@ -247,10 +248,9 @@ class MedakaPolishingStep(PipelineStep):
 #################### Auxillary #####################
 
 def _get_duplex_call(threads, prefix):
-    duplex_bin = model.BINARIES['duplex-tools']['bin']
     dirname = os.path.split(prefix)[1]
     duplex = [
-        duplex_bin,
+        "duplex_tools",
         "split_on_adapter",
         f"{prefix}",
         f"{os.path.join(prefix, f'{dirname}_split')}",
@@ -258,13 +258,14 @@ def _get_duplex_call(threads, prefix):
         "--threads",
         f"{threads}"
     ]
-    return duplex
+    duplex_env = model.get_prefix("duplex-tools")
+    env = {"PATH": f"{duplex_env}:{os.environ['PATH']}"}
+    return duplex, env
 
 def _get_filtlong_call(min_len, target_bases, prefix):
-    filtlong_bin = model.BINARIES['filtlong']['bin']
     dirname = os.path.split(prefix)[1]
     filtlong = [
-        filtlong_bin,
+        "filtlong",
         "--min_length",
         f"{min_len}",
         "--keep_percent 90",
@@ -272,75 +273,77 @@ def _get_filtlong_call(min_len, target_bases, prefix):
         f"{target_bases}",
         f"{os.path.join(prefix, f'{dirname}.fastq.gz')}"
     ]
-    return filtlong
+    filtlong_env = model.get_prefix("filtlong")
+    env = {"PATH": f"{filtlong_env}:{os.environ['PATH']}"}
+    return filtlong, env
 
 def _get_flye_call(threads, prefix):
-    flye_bin = model.BINARIES['flye']['bin']
     dirname = os.path.split(prefix)[1]
     flye = [
-        flye_bin,
+        "flye",
         "-o",
         f"{os.path.join(prefix, f'{dirname}_flye_assembly')}",
         "--threads", f"{threads}",
         "--nano-hq",
         f"{os.path.join(prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz')}"
     ]
-    fly_env = os.path.join(model.BINARIES['flye']['prefix'], "bin")
+    fly_env = model.get_prefix('flye')
     env = {"PATH": f"{fly_env}:{os.environ['PATH']}"}
     return flye, env
 
 def _get_raven_call(threads, prefix):
-    raven_bin = model.BINARIES['raven-assembler']['bin']
     dirname = os.path.split(prefix)[1]
     raven = [
-        raven_bin,
+        "raven",
         "--threads", f"{threads}",
         f"{os.path.join(prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz')}"
     ]
-    raven_env = os.path.join(model.BINARIES['raven-assembler']['prefix'], "bin")
+    raven_env = model.get_prefix('raven-assembler')
     env = {"PATH": f"{raven_env}:{os.environ['PATH']}"}
     return raven, env
 
 def _get_minimap_overlap(threads, prefix):
-    minimap_bin = model.BINARIES['minimap2']['bin']
     dirname = os.path.split(prefix)[1]
     minimap = [
-        minimap_bin,
+        "minimap2",
         "-x", "ava-ont",
         "-t", f"{threads}",
         f"{os.path.join(prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz')}",
         f"{os.path.join(prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz')}"
     ]
-    return minimap
+    minimap_env = model.get_prefix('minimap2')
+    env = {"PATH": f"{minimap_env}:{os.environ['PATH']}"}
+    return minimap, env
 
 def _get_minimap_mapping(threads, prefix):
-    minimap_bin = model.BINARIES['minimap2']['bin']
     dirname = os.path.split(prefix)[1]
     minimap = [
-        minimap_bin,
+        "minimap2",
         "-ax", "map-ont",
         "-t", f"{threads}",
         f"{os.path.join(prefix, f'{dirname}_flye_assembly', 'assembly.fasta')}",
         f"{os.path.join(prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz')}"
     ]
-    return minimap
+    minimap_env = model.get_prefix('minimap2')
+    env = {"PATH": f"{minimap_env}:{os.environ['PATH']}"}
+    return minimap, env
 
 def _get_miniasm_call(threads, prefix):
-    miniasm_bin = model.BINARIES['miniasm']['bin']
     dirname = os.path.split(prefix)[1]
     miniasm = [
-        miniasm_bin,
+        miniasm,
         "-f",
         f"{os.path.join(prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz')}",
         f"{os.path.join(prefix, 'read_overlap', f'{dirname}_overlap.paf.gz')}"
     ]
-    return miniasm
+    miniasm_env = model.get_prefix('miniasm')
+    env = {"PATH": f"{miniasm_env}:{os.environ['PATH']}"}
+    return miniasm, env
 
 def _get_racon_call(threads, prefix):
-    racon_bin = model.BINARIES['racon']['bin']
     dirname = os.path.split(prefix)[1]
     racon = [
-        racon_bin,
+        "racon",
         "-m", "8", "-x", "-6",
         "-g", "-8", "-w", "500",
         "--threads", f"{threads}",
@@ -348,10 +351,11 @@ def _get_racon_call(threads, prefix):
         f"{os.path.join(prefix, 'nanopore_mapping', 'mapping.sam')}",
         f"{os.path.join(prefix, f'{dirname}_flye_assembly', 'assembly.fasta')}"
     ]
-    return racon
+    racon_env = model.get_prefix('racon')
+    env = {"PATH": f"{racon_env}:{os.environ['PATH']}"}
+    return racon, env
 
 def _get_medaka_call(threads, assembler, mod, is_racon, prefix):
-    medaka_bin = model.BINARIES['medaka']['bin']
     dirname = os.path.split(prefix)[1]
     fasta = None
     if assembler == "Flye":
@@ -367,7 +371,7 @@ def _get_medaka_call(threads, assembler, mod, is_racon, prefix):
         )
 
     medaka = [
-        medaka_bin,
+        medaka,
         "-i",
         f"{os.path.join(prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz')}",
         "-d", f"{fasta}",
@@ -375,6 +379,6 @@ def _get_medaka_call(threads, assembler, mod, is_racon, prefix):
         "-t", f"{threads}",
         "-m", f"{mod}"
     ]
-    medaka_env = os.path.join(model.BINARIES['medaka']['prefix'], "bin")
+    medaka_env = model.get_prefix('medaka')
     env = {"PATH": f"{medaka_env}:{os.environ['PATH']}"}
     return medaka, env

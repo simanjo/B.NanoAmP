@@ -13,8 +13,8 @@ def execute_pipeline():
     steps, folder_iter = _setup_pipeline()
     for folder in folder_iter:
         print(f"Executing in {folder}")
-        # for step in steps:
-        #     step.run(folder.path)
+        for step in steps:
+            step.run(folder)
 
 def _use_folder(path):
     if not path.is_dir() or not _has_fastq(path):
