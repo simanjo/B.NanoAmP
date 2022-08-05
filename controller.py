@@ -56,9 +56,12 @@ def init_conda_envs():
         stdout, stderr, ret = conda_api.run_command(
                 conda_api.Commands.CREATE, "-n", name
             )
+        if ret != 0:
+            raise OSError(ret, stderr)
+        print(stdout)
         stdout, stderr, ret = conda_api.run_command(
                 conda_api.Commands.INSTALL, "-n", name, "--file", yml,
-                "--channel", "bioconda", "--channel", "conda-forge"
+                "--channel", "bioconda", "--channel", "conda-forge", "--yes"
             )
         if ret != 0:
             raise OSError(ret, stderr)
