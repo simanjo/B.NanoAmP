@@ -200,7 +200,8 @@ def filter_cells(models):
 def filter_guppy(models):
     avail = [
         mod.split("_")[-1] if mod.split("_")[-1].startswith("g")
-        else mod.split("_")[-2] for mod in models]
+        else mod.split("_")[-2] for mod in models
+    ]
     return ["--"] + list(set(avail))
 
 def filter_variants(models):

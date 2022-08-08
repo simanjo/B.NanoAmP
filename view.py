@@ -227,7 +227,8 @@ def _change_model_param(sender):
         dpg.set_value("medaka_manumodel", models[0])
     else:
         for name in update:
+            models = controller.filter_settings(models, name)
             dpg.configure_item(
                 name,
-                items = controller.filter_settings(models, name)
+                items = models
             )
