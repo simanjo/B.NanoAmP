@@ -48,6 +48,7 @@ def check_env_setup(force=False):
 def _handle_conda_init(sender):
     controller.init_conda_envs()
     dpg.configure_item("conda_check", show=False)
+    dpg.configure_item("medaka_manumodel", items=model.get_models())
 
 def _display_conda_setup(envs):
     dpg.add_text("The following conda setup has been found:")
@@ -148,16 +149,6 @@ def _add_assembler_settings():
 
 def _add_medaka_settings():
     dpg.add_text("Medaka Settings:")
-    dpg.add_checkbox(
-        label="choose model manually",
-        tag="medaka_choose", default_value=False,
-        callback=_toggle_medaka_model
-    )
-    dpg.add_combo(
-        label="Model", tag="medaka_manumodel",
-        default_value="r104_e81_sup_g5015", items=model.get_models(),
-        show=False
-    )
     with dpg.group(tag="medaka_automodel"):
         dpg.add_combo(
             label="FlowCell", tag="medaka_flowcell",
@@ -170,6 +161,16 @@ def _add_medaka_settings():
         dpg.add_combo(
             label="Guppy Version", tag="medaka_guppy",
             default_value="", items=model.get_guppy_versions()
+        )
+    with dpg.group(horizontal=True):
+        dpg.add_combo(
+            label="Model", tag="medaka_manumodel",
+            default_value=None, enabled=False, no_arrow_button=True
+        )
+        dpg.add_checkbox(
+            label="choose model manually",
+            tag="medaka_choose", default_value=False,
+            callback=_toggle_medaka_model
         )
     dpg.add_separator()
 
@@ -193,4 +194,12 @@ def _toggle_medaka_model(sender) -> None:
         "medaka_guppy",
         enabled=not state, no_arrow_button=state
     )
-    dpg.configure_item("medaka_manumodel", show=state)
+    dpg.configure_item(
+        "medaka_variant",
+        enabled=not state, no_arrow_button=state
+    )
+    dpg.configure_item(
+        "medaka_manumodel",
+        enabled=state, no_arrow_button=not state
+    )
+

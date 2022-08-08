@@ -1,4 +1,5 @@
 import os
+import subprocess
 
 BINARIES = [
     "duplex-tools",
@@ -30,11 +31,12 @@ PREFIXES = {}
 # pore = [mod.split("_")[0] for mod in allmodels]
 # guppy = [mod.split("_")[-1] if mod.split("_")[-1].startswith(g) else mod.split("_")[-2] for mod in allmodels]
 # variant = ["_".join(mod.split("_")[1:-1] if mod.split("_")[1] not in ["min", "prom"] else mod.split("_")[2:-1] if mod.split("_")[-1].startswith("g") else mod.split("_")[2:-2]) for mod in allmodels]
+######################################################## 
+
+MODELS = None
 
 # medaka 1.6.1
 # set(pore) = {'r103', 'r10', 'r104', 'r1041', 'r941'}
-######################################################## 
-
 PORES = {
     "R10.3": "r103",
     "R10": "r10",
@@ -110,7 +112,26 @@ def get_guppy_versions():
     return []
 
 def get_models():
-    return ["r104_e81_sup_g5015"]
+    global MODELS
+    if MODELS is None:
+        MODELS = _parse_models()
+    return MODELS
+    # return ["r104_e81_sup_g5015"]
+
+def _parse_models():
+    medaka_env = {"PATH": get_prefix('medaka')+f":{os.environ['PATH']}"}
+    proc = subprocess.run(
+        ["medaka", "tools", "list_models"], capture_output=True, env=medaka_env
+    )
+
+    if proc.returncode != 0:
+        raise OSError(proc.returncode, proc.stderr.decode())
+    allmodels = proc.stdout.decode().splitlines()[0]
+
+    # split allmodels, remove first entry "Available:"
+    # and strip trailing "," all but last
+    allmodels = [mod[:-1] for mod in allmodels.split()[1:-1]] + [allmodels.split()[-1]]
+
 
 def get_assemblers():
     return ["Flye", "Raven", "Miniasm"]
