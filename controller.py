@@ -176,6 +176,7 @@ def filter_models(device=None, cell=None, guppy=None, variant=None):
             start = 1 if mod_split[1] not in ["min", "prom"] else 2
             end = -1 if mod_split[-1].startswith("g") else -2
             return "_".join(mod_split[start:end]) == variant
+        return True
 
     return [mod for mod in all_models if _filter(mod)]
 
