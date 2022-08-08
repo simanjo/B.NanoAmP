@@ -2,7 +2,7 @@
 
 import dearpygui.dearpygui as dpg
 
-import view, controller
+import view
 from themes import custom_theme
 
 def _init_app():

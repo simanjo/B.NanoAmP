@@ -154,3 +154,62 @@ def _get_conda_packages(env):
     if ret != 0:
         raise OSError(ret, stderr)
     return [(i.split()[0], i.split()[1]) for i in stdout.splitlines()[3:]]
+
+################## model selection
+
+def filter_models(device=None, cell=None, guppy=None, variant=None):
+    all_models = model.get_models()
+
+    def _filter(mod):
+        if cell is not None and mod.split("_")[0] != cell:
+            return False
+        if device is not None and mod.split("_")[1] != device:
+            return False
+        if guppy is not None and (
+            mod.split("_")[-1] != guppy or (
+                mod.split("_")[-1] == 'rle' and mod.split("_")[-2] != guppy
+            )
+        ):
+            return False
+        if variant is not None:
+            mod_split = mod.split("_")
+            start = 1 if mod_split[1] not in ["min", "prom"] else 2
+            end = -1 if mod_split[-1].startswith("g") else -2
+            return "_".join(mod_split[start:end]) == variant
+
+    return [mod for mod in all_models if _filter(mod)]
+
+def filter_settings(models, setting):
+    if setting == "medaka_device":
+        return filter_devices(models)
+    if setting == "medaka_cell":
+        return filter_cells(models)
+    if setting == "medaka_guppy":
+        return filter_guppy(models)
+    if setting == "medaka_variants":
+        return filter_variants(models)
+
+def filter_devices(models):
+    devs = model.get_devices()
+    avail = [mod.split("_")[1] for mod in models if mod.split("_")[1] in devs]
+    return ["--"] + list(set(avail))
+
+def filter_cells(models):
+    cells = model.get_flow_cells()
+    avail = [mod.split("_")[0] for mod in models if mod.split("_")[0] in cells]
+    return ["--"] + list(set(avail))
+
+def filter_guppy(models):
+    avail = [
+        mod.split("_")[-1] if mod.split("_")[-1].startswith("g")
+        else mod.split("_")[-2] for mod in models]
+    return ["--"] + list(set(avail))
+
+def filter_variants(models):
+    avail = [
+        "_".join(mod.split("_")[1:-1]
+        if mod.split("_")[1] not in ["min", "prom"]
+        else mod.split("_")[2:-1] if mod.split("_")[-1].startswith("g")
+        else mod.split("_")[2:-2]) for mod in models
+    ]
+    return ["--"] + list(set(avail))
