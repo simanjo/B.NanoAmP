@@ -31,6 +31,7 @@ def check_env_setup(force=False):
     status, missing = controller.check_pkgs(envs)
     if status == "complete" and not force:
         controller.set_conda_envs(envs, prefs)
+        dpg.configure_item("medaka_manumodel", items=model.get_models())
         return
     print(prefs)
     with dpg.window(modal=True, label="Checking Conda Setup", autosize=True, no_close=True, no_collapse=True, tag="conda_check"):
@@ -151,16 +152,24 @@ def _add_medaka_settings():
     dpg.add_text("Medaka Settings:")
     with dpg.group(tag="medaka_automodel"):
         dpg.add_combo(
-            label="FlowCell", tag="medaka_flowcell",
-            default_value="", items=model.get_flow_cells()
+            label="FlowCell", tag="medaka_cell",
+            default_value="--", items=model.get_flow_cells(),
+            callback=_change_model_param
         )
         dpg.add_combo(
-            label="Device", tag="medaka_devices",
-            default_value="", items=model.get_devices()
+            label="Device", tag="medaka_device",
+            default_value="--", items=model.get_devices(),
+            callback=_change_model_param
         )
         dpg.add_combo(
             label="Guppy Version", tag="medaka_guppy",
-            default_value="", items=model.get_guppy_versions()
+            default_value="--", items=model.get_guppy_versions(),
+            callback=_change_model_param
+        )
+        dpg.add_combo(
+            label="Basecaller settings", tag="medaka_variant",
+            default_value="--", items=model.get_guppy_variants(),
+            callback=_change_model_param
         )
     with dpg.group(horizontal=True):
         dpg.add_combo(
@@ -183,11 +192,11 @@ def _toggle_flye(sender):
 def _toggle_medaka_model(sender) -> None:
     state = dpg.get_value(sender)
     dpg.configure_item(
-        "medaka_flowcell",
+        "medaka_cell",
         enabled= not state, no_arrow_button=state
     )
     dpg.configure_item(
-        "medaka_devices",
+        "medaka_device",
         enabled=not state, no_arrow_button=state
     )
     dpg.configure_item(
@@ -203,3 +212,23 @@ def _toggle_medaka_model(sender) -> None:
         enabled=state, no_arrow_button=not state
     )
 
+def _change_model_param(sender):
+    update = []
+    kwargs = {}
+    vals = {}
+    for name in ["device", "cell", "guppy", "variant"]:
+        dpg_name = "medaka_"+name
+        if (val := dpg.get_value(dpg_name)) == "--":
+            kwargs[name] = None
+            update.append(dpg_name)
+        else:
+            kwargs[name] = val
+    models = controller.filter_models(**kwargs)
+    if len(update) == 0 or len(models) == 1:
+        dpg.set_value("medaka_manumodel", models[0])
+    else:
+        for name in update:
+            dpg.configure_item(
+                name,
+                items = controller.filter_settings(models, name)
+            )

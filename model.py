@@ -138,20 +138,22 @@ def get_prefix(pkg):
     return PREFIXES[pkg]
 
 def get_flow_cells():
-    return []
+    return ["--"] + list(PORES.keys())
 
 def get_devices():
-    return []
+    return ["--"] + list(DEVICES.keys())
 
 def get_guppy_versions():
-    return []
+    return ["--"] + list(GUPPYVERS.keys())
+
+def get_guppy_variants():
+    return ["--"] + list(VARIANTS.keys())
 
 def get_models():
     global MODELS
     if MODELS is None:
         MODELS = _parse_models()
     return MODELS
-    # return ["r104_e81_sup_g5015"]
 
 def _parse_models():
     medaka_env = {"PATH": get_prefix('medaka')+f":{os.environ['PATH']}"}
