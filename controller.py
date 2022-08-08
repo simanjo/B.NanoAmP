@@ -190,14 +190,12 @@ def filter_settings(models, setting):
         return filter_variants(models)
 
 def filter_devices(models):
-    devs = model.get_devices()
+    devs = ["prom", "min"]
     avail = [mod.split("_")[1] for mod in models if mod.split("_")[1] in devs]
     return ["--"] + list(set(avail))
 
 def filter_cells(models):
-    cells = model.get_flow_cells()
-    avail = [mod.split("_")[0] for mod in models if mod.split("_")[0] in cells]
-    return ["--"] + list(set(avail))
+    return ["--"] + list(set([mod.split("_")[0] for mod in models]))
 
 def filter_guppy(models):
     avail = [

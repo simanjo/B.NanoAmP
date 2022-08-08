@@ -215,7 +215,6 @@ def _toggle_medaka_model(sender) -> None:
 def _change_model_param(sender):
     update = []
     kwargs = {}
-    vals = {}
     for name in ["device", "cell", "guppy", "variant"]:
         dpg_name = "medaka_"+name
         if (val := dpg.get_value(dpg_name)) == "--":
