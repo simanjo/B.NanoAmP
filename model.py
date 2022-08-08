@@ -38,11 +38,11 @@ MODELS = None
 # medaka 1.6.1
 # set(pore) = {'r103', 'r10', 'r104', 'r1041', 'r941'}
 PORES = {
-    "R10.3": "r103",
+    "R9.4.1": "r941",
     "R10": "r10",
+    "R10.3": "r103",
     "R10.4": "r104",
-    "R10.4.1": "r1041",
-    "R9.4.1": "r941"
+    "R10.4.1": "r1041"
 }
 
 # medaka 1.6.1
@@ -51,17 +51,17 @@ PORES = {
 #   'g351', 'g610', 'g330', 'g615'}
 GUPPYVERS = {
     "Guppy 3.0.3" : "g303",
-    "Guppy 3.2.1.0" : "g3210",
     "Guppy 3.2.2" : "g322",
+    "Guppy 3.2.10" : "g3210",
     "Guppy 3.3.0" : "g330",
     "Guppy 3.4.0" : "g340",
     "Guppy 3.4.4" : "g344",
     "Guppy 3.4.5" : "g345",
     "Guppy 3.5.1" : "g351",
     "Guppy 3.6.0" : "g360",
-    "Guppy 4.0.1.1" : "g4011",
-    "Guppy 5.0.1.5" : "g5015",
+    "Guppy 4.0.11" : "g4011",
     "Guppy 5.0.7" : "g507",
+    "Guppy 5.0.15" : "g5015",
     "Guppy 5.1.4" : "g514",
     "Guppy 6.1.0" : "g610",
     "Guppy 6.1.5" : "g615",
@@ -72,16 +72,51 @@ DEVICES = {
     "PromethION": "prom"
 }
 
-# set(variant) = {'e81_fast', 'sup_plant', 'snp',
-#   'fast', 'hac', 'hac_snp', 'e81_hac', 'sup_variant',
-#   'e81_sup_variant', 'e82_400bps_fast_variant', 'fast_snp',
-#   'e81_sup', 'fast_variant', 'e82_400bps_hac', 'sup_snp',
-#   'e82_400bps_sup_variant', 'e82_400bps_hac_variant',
-#   'sup_plant_variant', 'e82_400bps_sup', 'e81_fast_variant',
-#   'sup', 'e82_400bps_fast', 'variant', 'high', 'e81_hac_variant', 'hac_variant'}
+# set(variant) = {
+#     'fast', 'hac', 'sup',
+#     'snp', 'hac_snp', 'fast_snp', 'sup_snp',
+#     'variant', 'fast_variant', 'hac_variant', 'sup_variant',
+#     'e81_fast', 'e81_hac', 'e81_sup',
+#     'e81_fast_variant', 'e81_hac_variant', 'e81_sup_variant',
+#     'e82_400bps_fast', 'e82_400bps_hac', 'e82_400bps_sup',
+#     'e82_400bps_fast_variant', 'e82_400bps_hac_variant', 'e82_400bps_sup_variant',
+#     'sup_plant', 'sup_plant_variant', 'high'
+# }
 
 VARIANTS = {
+    "fast": "fast",
+    "hac": "hac",
+    "sup": "sup",
 
+    "snp": "snp",
+    "fast_snp": "fast_snp",
+    "hac_snp": "snp",
+    "sup_snp": "sup_snp",
+
+    "variant": "variant",
+    "fast_variant": "fast_variant",
+    "hac_variant": "hac_variant",
+    "sup_variant": "sup_variant",
+
+    "e81_fast": "e81_fast",
+    "e81_hac": "e81_hac",
+    "e81_sup": "e81_sup",
+
+    "e81_fast_variant": "e81_fast_variant",
+    "e81_hac_variant": "e81_hac_variant",
+    "e81_sup_variant": "e81_sup_variant",
+
+    "e82_400bps_fast": "e82_400bps_fast",
+    "e82_400bps_hac": "e82_400bps_hac",
+    "e82_400bps_sup": "e82_400bps_sup",
+
+    "e82_400bps_fast_variant": "e82_400bps_fast_variant",
+    "e82_400bps_hac_variant": "e82_400bps_hac_variant",
+    "e82_400bps_sup_variant": "e82_400bps_sup_variant",
+
+    "high": "high",
+    "sup_plant": "sup_plant",
+    "sup_plant_variant": "sup_plant_variant",
 }
 
 def get_conda_ymls():
@@ -131,7 +166,7 @@ def _parse_models():
     # split allmodels, remove first entry "Available:"
     # and strip trailing "," all but last
     allmodels = [mod[:-1] for mod in allmodels.split()[1:-1]] + [allmodels.split()[-1]]
-
+    return allmodels
 
 def get_assemblers():
     return ["Flye", "Raven", "Miniasm"]

@@ -111,8 +111,8 @@ def check_pkgs(envs):
     status = "complete" if not missing else "incomplete"
     return status, missing
 
-def check_guppy():
-    pass
+# def check_guppy():
+#     pass
 
 def get_conda_setup():
     prefs = {}
