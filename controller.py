@@ -1,4 +1,5 @@
 import os
+from ErrorWindow import ErrorWindow
 
 import conda.cli.python_api as conda_api
 import dearpygui.dearpygui as dpg
@@ -12,11 +13,23 @@ import model
 
 
 def execute_pipeline():
+    if not _preflight_check():
+        return
     steps, folder_iter = _setup_pipeline()
     for folder in folder_iter:
         print(f"Executing in {folder}")
         for step in steps:
             step.run(folder)
+
+def _preflight_check():
+    bcfolder = dpg.get_value("bcfolder")
+    if not os.path.isdir(bcfolder):
+        msg = f"Please specify a valid folder location."
+        msg += f"\nThe given folder '{bcfolder}' does not exist."
+        ErrorWindow(msg)
+        return False
+    return True
+
 
 def _use_folder(path):
     if not path.is_dir() or not _has_fastq(path):
