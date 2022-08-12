@@ -150,7 +150,7 @@ class AssemblyStep(PipelineStep):
                 ["fold"], stdin=fasta_conv_awk.stdout, stdout=subprocess.PIPE
             )
             asm_output = os.path.join(
-                asm_dir, f"{dirname}_assembly.fasta"
+                asm_dir, f"assembly.fasta"
             )
             with open(asm_output, 'wb') as out_fh:
                 shutil.copyfileobj(fasta_conv_fold.stdout, out_fh)
@@ -439,7 +439,7 @@ def _get_medaka_call(threads, assembler, mod, is_racon, prefix):
     fasta = None
     if assembler == "Flye":
         if is_racon:
-            fasta = os.path.join(prefix, "racon_polishing", "racon.fasta")
+            fasta = os.path.join(prefix, f"{dirname}_racon_polishing", "racon.fasta")
         else:
             fasta = os.path.join(prefix, f"{dirname}_flye_assembly", "assembly.fasta")
     elif assembler == "Raven":
