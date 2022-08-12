@@ -481,7 +481,7 @@ def _get_medaka_call(threads, assembler, mod, is_racon, prefix):
     fasta_folder = None
     if assembler == "Flye":
         if is_racon:
-            fasta_folder = "racon_polishing"
+            fasta_folder = f"{dirname}_racon_polishing"
         else:
             fasta_folder = f"{dirname}_flye_assembly"
     elif assembler == "Raven":
