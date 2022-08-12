@@ -2,7 +2,8 @@ import os
 
 import dearpygui.dearpygui as dpg
 
-import model, controller
+import model
+import controller
 
 def add_file_dialog():
     dpg.add_file_dialog(

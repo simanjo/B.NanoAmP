@@ -1,14 +1,14 @@
 import os
-from ErrorWindow import ErrorWindow
 
 import conda.cli.python_api as conda_api
 import dearpygui.dearpygui as dpg
 from packaging import version
 
-from PipelineSteps import DuplexStep, FilterStep, AssemblyStep, FinalCleanStep
+from PipelineSteps import DuplexStep, FilterStep, AssemblyStep
 from PipelineSteps import RaconPolishingStep, MedakaPolishingStep
 from PipelineSteps import CleanDuplexStep, CleanFilterStep
 from PipelineSteps import CleanAssemblyStep, FinalCleanStep
+from ErrorWindow import ErrorWindow
 import model
 
 

@@ -1,6 +1,8 @@
+import gzip
+import os
+import shutil
+import subprocess
 from abc import ABC, abstractmethod
-
-import gzip, os, shutil, subprocess
 
 import model
 
