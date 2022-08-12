@@ -266,7 +266,7 @@ class RaconPolishingStep(PipelineStep):
             polishing_call, stdout=subprocess.PIPE, env=env
         )
         polish_out = os.path.join(
-           polish_dir, "racon.fasta"
+           polish_dir, "assembly.fasta"
         )
         with open(polish_out, 'wb') as out_fh:
             # ugly HACK?
@@ -474,23 +474,24 @@ def _get_racon_call(threads, prefix):
 
 def _get_medaka_call(threads, assembler, mod, is_racon, prefix):
     dirname = os.path.split(prefix)[1]
-    fasta = None
+    filtered_reads = os.path.join(
+        prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz'
+    )
+    fasta_folder = None
     if assembler == "Flye":
         if is_racon:
-            fasta = os.path.join(prefix, f"{dirname}_racon_polishing", "racon.fasta")
+            fasta_folder = "racon_polishing"
         else:
-            fasta = os.path.join(prefix, f"{dirname}_flye_assembly", "assembly.fasta")
+            fasta_folder = f"{dirname}_flye_assembly"
     elif assembler == "Raven":
-        fasta = os.path.join(prefix, f"{dirname}_raven_assembly", "assembly.fasta")
+        fasta_folder = f"{dirname}_raven_assembly"
     elif assembler == "Miniasm":
-        fasta = os.path.join(prefix, f"{dirname}_miniasm_assembly", "assembly.fasta")
+        fasta_folder = f"{dirname}_miniasm_assembly",
     else:
         raise NotImplemented(
             f"The assembly method {assembler} is not supported."
         )
-    filtered_reads = os.path.join(
-        prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz'
-    )
+    fasta = os.path.join(prefix, fasta_folder, "assembly.fasta")
     medaka = [
         "medaka_consensus",
         "-i", f"{filtered_reads}",
