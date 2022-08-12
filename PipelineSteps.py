@@ -304,7 +304,7 @@ class MedakaPolishingStep(PipelineStep):
                 os.path.join(wdir, "medaka_polished", "consensus.fasta"),
                 os.path.join(wdir, fasta_name)
             )
-            
+
         else:
             print(proc.returncode)
             print(proc.stdout.decode())
@@ -363,13 +363,16 @@ def _get_filtlong_call(min_len, target_bases, prefix):
 
 def _get_flye_call(threads, prefix):
     dirname = os.path.split(prefix)[1]
+    filtered_reads = os.path.join(
+        prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz'
+    )
     flye = [
         "flye",
         "-o",
         f"{os.path.join(prefix, f'{dirname}_flye_assembly')}",
         "--threads", f"{threads}",
         "--nano-hq",
-        f"{os.path.join(prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz')}"
+        f"{filtered_reads}"
     ]
     fly_env = model.get_prefix('flye')
     env = {"PATH": f"{fly_env}:{os.environ['PATH']}"}
@@ -378,10 +381,13 @@ def _get_flye_call(threads, prefix):
 
 def _get_raven_call(threads, prefix):
     dirname = os.path.split(prefix)[1]
+    filtered_reads = os.path.join(
+        prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz'
+    )
     raven = [
         "raven",
         "--threads", f"{threads}",
-        f"{os.path.join(prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz')}"
+        f"{filtered_reads}"
     ]
     raven_env = model.get_prefix('raven-assembler')
     env = {"PATH": f"{raven_env}:{os.environ['PATH']}"}
@@ -390,12 +396,14 @@ def _get_raven_call(threads, prefix):
 
 def _get_minimap_overlap(threads, prefix):
     dirname = os.path.split(prefix)[1]
+    filtered_reads = os.path.join(
+        prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz'
+    )
     minimap = [
         "minimap2",
         "-x", "ava-ont",
         "-t", f"{threads}",
-        f"{os.path.join(prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz')}",
-        f"{os.path.join(prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz')}"
+        f"{filtered_reads}", f"{filtered_reads}"
     ]
     minimap_env = model.get_prefix('minimap2')
     env = {"PATH": f"{minimap_env}:{os.environ['PATH']}"}
@@ -404,12 +412,15 @@ def _get_minimap_overlap(threads, prefix):
 
 def _get_minimap_mapping(threads, prefix):
     dirname = os.path.split(prefix)[1]
+    filtered_reads = os.path.join(
+        prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz'
+    )
     minimap = [
         "minimap2",
         "-ax", "map-ont",
         "-t", f"{threads}",
         f"{os.path.join(prefix, f'{dirname}_flye_assembly', 'assembly.fasta')}",
-        f"{os.path.join(prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz')}"
+        f"{filtered_reads}"
     ]
     minimap_env = model.get_prefix('minimap2')
     env = {"PATH": f"{minimap_env}:{os.environ['PATH']}"}
@@ -418,10 +429,12 @@ def _get_minimap_mapping(threads, prefix):
 
 def _get_miniasm_call(threads, prefix):
     dirname = os.path.split(prefix)[1]
-    reads = os.path.join(prefix, "filtered_reads", f"{dirname}_filtered.fastq.gz")
+    filtered_reads = os.path.join(
+        prefix, "filtered_reads", f"{dirname}_filtered.fastq.gz"
+    )
     asm_dir = os.path.join(prefix, f"{dirname}_miniasm_assembly")
     overlap = os.path.join(asm_dir, f"{dirname}_overlap.paf.gz")
-    miniasm = ["miniasm", "-f", reads, overlap]
+    miniasm = ["miniasm", "-f", filtered_reads, overlap]
     miniasm_env = model.get_prefix('miniasm')
     env = {"PATH": f"{miniasm_env}:{os.environ['PATH']}"}
     return miniasm, env
@@ -429,10 +442,12 @@ def _get_miniasm_call(threads, prefix):
 
 def _get_minipolish_call(threads, prefix):
     dirname = os.path.split(prefix)[1]
-    reads = os.path.join(prefix, "filtered_reads", f"{dirname}_filtered.fastq.gz")
+    filtered_reads = os.path.join(
+        prefix, "filtered_reads", f"{dirname}_filtered.fastq.gz"
+    )
     asm_dir = os.path.join(prefix, f"{dirname}_miniasm_assembly")
     assembly = os.path.join(asm_dir, f"{dirname}_unpolished_assembly.gfa")
-    minipolish = ["minipolish", "-t", f"{threads}", reads, assembly]
+    minipolish = ["minipolish", "-t", f"{threads}", filtered_reads, assembly]
     minipolish_env = model.get_prefix('minipolish')
     env = {"PATH": f"{minipolish_env}:{os.environ['PATH']}"}
     return minipolish, env
@@ -440,12 +455,15 @@ def _get_minipolish_call(threads, prefix):
 
 def _get_racon_call(threads, prefix):
     dirname = os.path.split(prefix)[1]
+    filtered_reads = os.path.join(
+        prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz'
+    )
     racon = [
         "racon",
         "-m", "8", "-x", "-6",
         "-g", "-8", "-w", "500",
         "--threads", f"{threads}",
-        f"{os.path.join(prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz')}",
+        f"{filtered_reads}",
         f"{os.path.join(prefix, 'nanopore_mapping', 'mapping.sam')}",
         f"{os.path.join(prefix, f'{dirname}_flye_assembly', 'assembly.fasta')}"
     ]
@@ -470,11 +488,12 @@ def _get_medaka_call(threads, assembler, mod, is_racon, prefix):
         raise NotImplemented(
             f"The assembly method {assembler} is not supported."
         )
-
+    filtered_reads = os.path.join(
+        prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz'
+    )
     medaka = [
         "medaka_consensus",
-        "-i",
-        f"{os.path.join(prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz')}",
+        "-i", f"{filtered_reads}",
         "-d", f"{fasta}",
         "-o", f"{os.path.join(prefix, 'medaka_polished')}",
         "-t", f"{threads}",
