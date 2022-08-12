@@ -10,7 +10,7 @@ import model
 class PipelineStep(ABC):
 
     @abstractmethod
-    def run(self, working_dir:str) -> None:
+    def run(self, wdir:str) -> None:
         pass
 
 
@@ -19,8 +19,8 @@ class DuplexStep(PipelineStep):
     def __init__(self, threads) -> None:
         self.threads = threads
 
-    def run(self, working_dir):
-        duplex_call, env = _get_duplex_call(self.threads, working_dir)
+    def run(self, wdir):
+        duplex_call, env = _get_duplex_call(self.threads, wdir)
         # print(f"running {duplex_call}")
         proc = subprocess.run(
             duplex_call, capture_output=True, env=env
@@ -33,20 +33,20 @@ class DuplexStep(PipelineStep):
             print(proc.stdout.decode())
             print(proc.stderr.decode())
 
-        orig_dir = os.path.join(working_dir, "original")
+        orig_dir = os.path.join(wdir, "original")
         os.makedirs(orig_dir)
-        for entry in os.scandir(working_dir):
+        for entry in os.scandir(wdir):
             if entry.is_file() and entry.name.endswith("fastq.gz"):
                 # shutil needs str-like src directory until python 3.9
                 # https://bugs.python.org/issue32689
                 shutil.move(entry.path, orig_dir)
 
         # copy everything
-        dirname = os.path.split(working_dir)[1]
+        dirname = os.path.split(wdir)[1]
         outfile = os.path.join(
-            working_dir, f"{dirname}.fastq.gz"
+            wdir, f"{dirname}.fastq.gz"
         )
-        split_dir = os.path.join(working_dir, f"{dirname}_split")
+        split_dir = os.path.join(wdir, f"{dirname}_split")
         with gzip.open(outfile, 'wb') as out_fh:
             for entry in os.scandir(split_dir):
                 if entry.is_file() and entry.name.endswith("fastq.gz"):
@@ -58,9 +58,9 @@ class CleanDuplexStep(PipelineStep):
     def __init__(self) -> None:
         pass
 
-    def run(self, working_dir):
-        dirname = os.path.split(working_dir)[1]
-        shutil.rmtree(os.path.join(working_dir, f"{dirname}_split"))
+    def run(self, wdir):
+        dirname = os.path.split(wdir)[1]
+        shutil.rmtree(os.path.join(wdir, f"{dirname}_split"))
 
 
 class FilterStep(PipelineStep):
@@ -69,13 +69,13 @@ class FilterStep(PipelineStep):
         self.min_len = min_len
         self.target_bases = target_bases
 
-    def run(self, working_dir: str) -> None:
-        filtered_dir = os.path.join(working_dir, "filtered_reads")
+    def run(self, wdir: str) -> None:
+        filtered_dir = os.path.join(wdir, "filtered_reads")
         os.makedirs(filtered_dir)
 
-        dirname = os.path.split(working_dir)[1]
+        dirname = os.path.split(wdir)[1]
         filtlong_call, env = _get_filtlong_call(
-            self.min_len, self.target_bases, working_dir
+            self.min_len, self.target_bases, wdir
         )
         # print(f"running {filtlong_call}")
         proc = subprocess.Popen(
@@ -95,9 +95,9 @@ class CleanFilterStep(PipelineStep):
     def __init__(self) -> None:
         pass
 
-    def run(self, working_dir):
-        dirname = os.path.split(working_dir)[1]
-        shutil.rmtree(os.path.join(working_dir, "filtered_reads"))
+    def run(self, wdir):
+        dirname = os.path.split(wdir)[1]
+        shutil.rmtree(os.path.join(wdir, "filtered_reads"))
 
 
 class AssemblyStep(PipelineStep):
@@ -106,14 +106,14 @@ class AssemblyStep(PipelineStep):
         self.threads = threads
         self.assembler = assembler
 
-    def run(self, working_dir: str) -> None:
+    def run(self, wdir: str) -> None:
         if self.assembler == "Miniasm":
-            dirname = os.path.split(working_dir)[1]
-            asm_dir = os.path.join(working_dir, f"{dirname}_miniasm_assembly")
+            dirname = os.path.split(wdir)[1]
+            asm_dir = os.path.join(wdir, f"{dirname}_miniasm_assembly")
             os.makedirs(asm_dir)
 
             minimap_call, env = _get_minimap_overlap(
-                self.threads, working_dir
+                self.threads, wdir
             )
             proc = subprocess.Popen(
                 minimap_call, stdout=subprocess.PIPE, env=env
@@ -125,7 +125,7 @@ class AssemblyStep(PipelineStep):
                 shutil.copyfileobj(proc.stdout, out_fh)
 
             assembler_call, env = _get_miniasm_call(
-                self.threads, working_dir
+                self.threads, wdir
             )
             proc = subprocess.Popen(
                 assembler_call, stdout=subprocess.PIPE, env=env
@@ -137,7 +137,7 @@ class AssemblyStep(PipelineStep):
                 shutil.copyfileobj(proc.stdout, out_fh)
 
             polish_call, env = _get_minipolish_call(
-                self.threads, working_dir
+                self.threads, wdir
             )
             proc = subprocess.Popen(
                 polish_call, stdout=subprocess.PIPE, env=env
@@ -166,7 +166,7 @@ class AssemblyStep(PipelineStep):
 
         elif self.assembler == "Flye":
             assembler_call, env = _get_flye_call(
-                self.threads, working_dir
+                self.threads, wdir
             )
             # print(f"running {assembler_call}")
             proc = subprocess.run(
@@ -181,11 +181,11 @@ class AssemblyStep(PipelineStep):
                 print(proc.stderr.decode())
 
         elif self.assembler == "Raven":
-            dirname = os.path.split(working_dir)[1]
-            asm_dir = os.path.join(working_dir, f"{dirname}_raven_assembly")
+            dirname = os.path.split(wdir)[1]
+            asm_dir = os.path.join(wdir, f"{dirname}_raven_assembly")
             os.makedirs(asm_dir)
             assembler_call, env = _get_raven_call(
-                self.threads, working_dir
+                self.threads, wdir
             )
             # print(f"running {assembler_call}")
             proc = subprocess.Popen(
@@ -206,44 +206,44 @@ class CleanAssemblyStep(PipelineStep):
         self.assembler = assembler
         self.is_racon = is_racon and assembler == "Flye"
 
-    def run(self, working_dir):
-        dirname = os.path.split(working_dir)[1]
+    def run(self, wdir):
+        dirname = os.path.split(wdir)[1]
         asm_name = f"{dirname}_{self.assembler.lower()}_assembly"
-        shutil.rmtree(os.path.join(working_dir, asm_name))
+        shutil.rmtree(os.path.join(wdir, asm_name))
 
         if self.is_racon:
-            mapping_dir = os.path.join(working_dir, "nanopore_mapping")
+            mapping_dir = os.path.join(wdir, "nanopore_mapping")
             polish_dir = os.path.join(
-                working_dir, f"{dirname}_racon_polishing"
+                wdir, f"{dirname}_racon_polishing"
             )
             shutil.rmtree(mapping_dir)
             shutil.rmtree(polish_dir)
 
-        medaka_dir = os.path.join(working_dir, "medaka_polished")
+        medaka_dir = os.path.join(wdir, "medaka_polished")
         shutil.rmtree(medaka_dir)
 
-        asm_dir = os.path.join(working_dir, "assemblies")
+        asm_dir = os.path.join(wdir, "assemblies")
         if not os.path.isdir(asm_dir):
             os.makedirs(asm_dir)
         polish_flag = "rm" if self.is_racon else "m"
         fasta_name = f"{dirname}_{self.assembler}_{polish_flag}_coverage.fasta"
-        if (os.path.isfile(os.path.join(working_dir, fasta_name))):
-            shutil.move(os.path.join(working_dir, fasta_name), asm_dir)
+        if (os.path.isfile(os.path.join(wdir, fasta_name))):
+            shutil.move(os.path.join(wdir, fasta_name), asm_dir)
 
 
 class RaconPolishingStep(PipelineStep):
     def __init__(self, threads) -> None:
         self.threads = threads
 
-    def run(self, working_dir):
-        dirname = os.path.split(working_dir)[1]
-        mapping_dir = os.path.join(working_dir, "nanopore_mapping")
+    def run(self, wdir):
+        dirname = os.path.split(wdir)[1]
+        mapping_dir = os.path.join(wdir, "nanopore_mapping")
         os.makedirs(mapping_dir)
-        polish_dir = os.path.join(working_dir, f"{dirname}_racon_polishing")
+        polish_dir = os.path.join(wdir, f"{dirname}_racon_polishing")
         os.makedirs(polish_dir)
 
         minimap_call, env = _get_minimap_mapping(
-            self.threads, working_dir
+            self.threads, wdir
         )
         # print(f"running {minimap_call}")
         proc = subprocess.Popen(
@@ -259,7 +259,7 @@ class RaconPolishingStep(PipelineStep):
             shutil.copyfileobj(proc.stdout, out_fh)
 
         polishing_call, env = _get_racon_call(
-            self.threads, working_dir
+            self.threads, wdir
         )
         # print(f"running {polishing_call}")
         proc = subprocess.Popen(
@@ -283,10 +283,10 @@ class MedakaPolishingStep(PipelineStep):
         self.is_racon = is_racon and assembler == "Flye"
         super().__init__()
 
-    def run(self, working_dir):
+    def run(self, wdir):
         medaka_call, env = _get_medaka_call(
             self.threads, self.assembler,
-            self.model, self.is_racon, working_dir
+            self.model, self.is_racon, wdir
         )
         # print(f"running {medaka_call}")
         proc = subprocess.run(
@@ -296,13 +296,13 @@ class MedakaPolishingStep(PipelineStep):
             print(proc.returncode)
             print(proc.stdout.decode())
 
-            dirname = os.path.split(working_dir)[1]
-            polish_flag = "rm" if self.is_racon else "m"
-            fasta_name = f"{dirname}_{self.assembler}_{polish_flag}_coverage.fasta"
+            dirname = os.path.split(wdir)[1]
+            polish = "rm" if self.is_racon else "m"
+            fasta_name = f"{dirname}_{self.assembler}_{polish}_coverage.fasta"
 
             shutil.move(
-                os.path.join(working_dir, "medaka_polished", "consensus.fasta"),
-                os.path.join(working_dir, fasta_name)
+                os.path.join(wdir, "medaka_polished", "consensus.fasta"),
+                os.path.join(wdir, fasta_name)
             )
             
         else:
@@ -315,13 +315,13 @@ class FinalCleanStep(PipelineStep):
     def __init__(self) -> None:
         pass
 
-    def run(self, working_dir: str) -> None:
-        dirname = os.path.split(working_dir)[1]
-        os.remove(os.path.join(working_dir, f"{dirname}.fastq.gz"))
-        for entry in os.scandir(os.path.join(working_dir, "original")):
-            shutil.move(entry.path, working_dir)
+    def run(self, wdir: str) -> None:
+        dirname = os.path.split(wdir)[1]
+        os.remove(os.path.join(wdir, f"{dirname}.fastq.gz"))
+        for entry in os.scandir(os.path.join(wdir, "original")):
+            shutil.move(entry.path, wdir)
         try:
-            os.rmdir(os.path.join(working_dir, "original"))
+            os.rmdir(os.path.join(wdir, "original"))
         except OSError:
             print("Couldn't delete copy of original files")
 
