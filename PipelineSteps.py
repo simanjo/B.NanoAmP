@@ -487,7 +487,7 @@ def _get_medaka_call(threads, assembler, mod, is_racon, prefix):
     elif assembler == "Raven":
         fasta_folder = f"{dirname}_raven_assembly"
     elif assembler == "Miniasm":
-        fasta_folder = f"{dirname}_miniasm_assembly",
+        fasta_folder = f"{dirname}_miniasm_assembly"
     else:
         raise NotImplementedError(
             f"The assembly method {assembler} is not supported."

@@ -59,7 +59,6 @@ def _setup_pipeline():
     bcfolder = dpg.get_value("bcfolder")
     print(f"Working on files in {bcfolder}")
 
-
     def folder_iter():
         yield from (entry.path for entry in os.scandir(bcfolder)
                     if _use_folder(entry))
