@@ -6,11 +6,13 @@ from abc import ABC, abstractmethod
 
 import model
 
+
 class PipelineStep(ABC):
 
     @abstractmethod
     def run(self, working_dir:str) -> None:
         pass
+
 
 class DuplexStep(PipelineStep):
 
@@ -51,6 +53,7 @@ class DuplexStep(PipelineStep):
                     with gzip.open(entry.path, 'rb') as in_fh:
                         shutil.copyfileobj(in_fh, out_fh)
 
+
 class CleanDuplexStep(PipelineStep):
     def __init__(self) -> None:
         pass
@@ -58,6 +61,7 @@ class CleanDuplexStep(PipelineStep):
     def run(self, working_dir):
         dirname = os.path.split(working_dir)[1]
         shutil.rmtree(os.path.join(working_dir, f"{dirname}_split"))
+
 
 class FilterStep(PipelineStep):
 
@@ -86,6 +90,7 @@ class FilterStep(PipelineStep):
             # implicitly calls communicate?
             shutil.copyfileobj(proc.stdout, out_fh)
 
+
 class CleanFilterStep(PipelineStep):
     def __init__(self) -> None:
         pass
@@ -93,6 +98,7 @@ class CleanFilterStep(PipelineStep):
     def run(self, working_dir):
         dirname = os.path.split(working_dir)[1]
         shutil.rmtree(os.path.join(working_dir, "filtered_reads"))
+
 
 class AssemblyStep(PipelineStep):
 
@@ -194,6 +200,7 @@ class AssemblyStep(PipelineStep):
                 f"The assembly method {self.assembler} is not supported."
             )
 
+
 class CleanAssemblyStep(PipelineStep):
     def __init__(self, assembler, is_racon) -> None:
         self.assembler = assembler
@@ -222,6 +229,7 @@ class CleanAssemblyStep(PipelineStep):
         fasta_name = f"{dirname}_{self.assembler}_{polish_flag}_coverage.fasta"
         if (os.path.isfile(os.path.join(working_dir, fasta_name))):
             shutil.move(os.path.join(working_dir, fasta_name), asm_dir)
+
 
 class RaconPolishingStep(PipelineStep):
     def __init__(self, threads) -> None:
@@ -266,6 +274,7 @@ class RaconPolishingStep(PipelineStep):
             # implicitly calls communicate?
             shutil.copyfileobj(proc.stdout, out_fh)
 
+
 class MedakaPolishingStep(PipelineStep):
     def __init__(self, threads, assembler, model, is_racon) -> None:
         self.threads = threads
@@ -301,6 +310,7 @@ class MedakaPolishingStep(PipelineStep):
             print(proc.stdout.decode())
             print(proc.stderr.decode())
 
+
 class FinalCleanStep(PipelineStep):
     def __init__(self) -> None:
         pass
@@ -316,8 +326,8 @@ class FinalCleanStep(PipelineStep):
             print("Couldn't delete copy of original files")
 
 
-
 #################### Auxillary #####################
+
 
 def _get_duplex_call(threads, prefix):
     dirname = os.path.split(prefix)[1]
@@ -334,6 +344,7 @@ def _get_duplex_call(threads, prefix):
     env = {"PATH": f"{duplex_env}:{os.environ['PATH']}"}
     return duplex, env
 
+
 def _get_filtlong_call(min_len, target_bases, prefix):
     dirname = os.path.split(prefix)[1]
     filtlong = [
@@ -349,6 +360,7 @@ def _get_filtlong_call(min_len, target_bases, prefix):
     env = {"PATH": f"{filtlong_env}:{os.environ['PATH']}"}
     return filtlong, env
 
+
 def _get_flye_call(threads, prefix):
     dirname = os.path.split(prefix)[1]
     flye = [
@@ -363,6 +375,7 @@ def _get_flye_call(threads, prefix):
     env = {"PATH": f"{fly_env}:{os.environ['PATH']}"}
     return flye, env
 
+
 def _get_raven_call(threads, prefix):
     dirname = os.path.split(prefix)[1]
     raven = [
@@ -373,6 +386,7 @@ def _get_raven_call(threads, prefix):
     raven_env = model.get_prefix('raven-assembler')
     env = {"PATH": f"{raven_env}:{os.environ['PATH']}"}
     return raven, env
+
 
 def _get_minimap_overlap(threads, prefix):
     dirname = os.path.split(prefix)[1]
@@ -387,6 +401,7 @@ def _get_minimap_overlap(threads, prefix):
     env = {"PATH": f"{minimap_env}:{os.environ['PATH']}"}
     return minimap, env
 
+
 def _get_minimap_mapping(threads, prefix):
     dirname = os.path.split(prefix)[1]
     minimap = [
@@ -400,6 +415,7 @@ def _get_minimap_mapping(threads, prefix):
     env = {"PATH": f"{minimap_env}:{os.environ['PATH']}"}
     return minimap, env
 
+
 def _get_miniasm_call(threads, prefix):
     dirname = os.path.split(prefix)[1]
     reads = os.path.join(prefix, "filtered_reads", f"{dirname}_filtered.fastq.gz")
@@ -409,6 +425,7 @@ def _get_miniasm_call(threads, prefix):
     miniasm_env = model.get_prefix('miniasm')
     env = {"PATH": f"{miniasm_env}:{os.environ['PATH']}"}
     return miniasm, env
+
 
 def _get_minipolish_call(threads, prefix):
     dirname = os.path.split(prefix)[1]
@@ -435,6 +452,7 @@ def _get_racon_call(threads, prefix):
     racon_env = model.get_prefix('racon')
     env = {"PATH": f"{racon_env}:{os.environ['PATH']}"}
     return racon, env
+
 
 def _get_medaka_call(threads, assembler, mod, is_racon, prefix):
     dirname = os.path.split(prefix)[1]

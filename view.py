@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 import model
 import controller
 
+
 def add_file_dialog():
     dpg.add_file_dialog(
         label="Select Base Folder",
@@ -12,6 +13,7 @@ def add_file_dialog():
         callback=_choose_dir, tag="file_dialog",
         width=500, height=400
     )
+
 
 def add_main_window():
     with dpg.window(tag="main_window", autosize=True, no_close=True, no_collapse=True):
@@ -47,10 +49,12 @@ def check_env_setup(force=False):
             dpg.add_button(label="Abort", callback=dpg.stop_dearpygui)
     return
 
+
 def _handle_conda_init(sender):
     controller.init_conda_envs()
     dpg.configure_item("conda_check", show=False)
     dpg.configure_item("medaka_manumodel", items=model.get_models())
+
 
 def _display_conda_setup(envs):
     dpg.add_text("The following conda setup has been found:")
@@ -67,6 +71,7 @@ def _display_conda_setup(envs):
                         dpg.add_text(pkg)
 
 #################### Auxillary ####################
+
 
 def _choose_dir(sender, app_data) -> None:
 
@@ -85,6 +90,7 @@ def _choose_dir(sender, app_data) -> None:
 
     dpg.set_value("bcfolder", fpath)
     dpg.configure_item("bcfolder", show=True)
+
 
 def _add_general_settings():
     dpg.add_text("General Settings")
@@ -115,6 +121,7 @@ def _add_general_settings():
     )
     dpg.add_separator()
 
+
 def _add_filtlong_settings():
     dpg.add_text("Filtlong Settings")
     dpg.add_input_int(
@@ -123,6 +130,7 @@ def _add_filtlong_settings():
         default_value=1_000
     )
     dpg.add_separator()
+
 
 def _add_assembler_settings():
     dpg.add_text("Assembler Settings:")
@@ -148,6 +156,7 @@ def _add_assembler_settings():
         default_value=False
     )
     dpg.add_separator()
+
 
 def _add_medaka_settings():
     dpg.add_text("Medaka Settings:")
@@ -187,8 +196,10 @@ def _add_medaka_settings():
 
 #################### Callbacks ####################
 
+
 def _toggle_flye(sender):
     dpg.configure_item("racon_skip", show=dpg.get_value(sender))
+
 
 def _toggle_medaka_model(sender) -> None:
     state = dpg.get_value(sender)
@@ -212,6 +223,7 @@ def _toggle_medaka_model(sender) -> None:
         "medaka_manumodel",
         enabled=state, no_arrow_button=not state
     )
+
 
 def _change_model_param(sender):
     update = []

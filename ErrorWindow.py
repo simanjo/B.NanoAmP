@@ -1,5 +1,6 @@
 import dearpygui.dearpygui as dpg
 
+
 class ErrorWindow():
 
     def __init__(self, message, abort=False) -> None:

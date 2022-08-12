@@ -21,6 +21,7 @@ def execute_pipeline():
         for step in steps:
             step.run(folder)
 
+
 def _preflight_check():
     bcfolder = dpg.get_value("bcfolder")
     if not os.path.isdir(bcfolder):
@@ -42,6 +43,7 @@ def _use_folder(path):
         return not path.name.startswith("unclassified")
     return True
 
+
 def _has_fastq(path):
     for entry in os.scandir(path):
         if (entry.is_file() and (
@@ -49,6 +51,7 @@ def _has_fastq(path):
                 entry.name.endswith(".fastq.gz")
             )):
             return True
+
 
 def _setup_pipeline():
     bcfolder = dpg.get_value("bcfolder")
@@ -95,9 +98,11 @@ def _setup_pipeline():
 
 #################### Conda Setup ####################
 
+
 def set_conda_envs(envs, prefs):
     prefixes = {pkg: os.path.join(pref, "bin") for pkg,(pref,_) in prefs.items()}
     model.PREFIXES = prefixes
+
 
 def init_conda_envs():
     for name, yml in model.get_conda_ymls():
@@ -115,6 +120,7 @@ def init_conda_envs():
             raise OSError(ret, stderr)
         print(stdout)
 
+
 def check_pkgs(envs):
     missing = []
     available = [pkg for pkgs in envs.values() for pkg in pkgs]
@@ -124,8 +130,6 @@ def check_pkgs(envs):
     status = "complete" if not missing else "incomplete"
     return status, missing
 
-# def check_guppy():
-#     pass
 
 def get_conda_setup():
     prefs = {}
@@ -145,6 +149,7 @@ def get_conda_setup():
             envs[env_name] = pkgs_in_env
     return envs, prefs
 
+
 def _get_conda_envs():
     stdout, stderr, ret = conda_api.run_command(
         conda_api.Commands.INFO, "--envs"
@@ -159,6 +164,7 @@ def _get_conda_envs():
         for env in stdout.splitlines()[2:-1]
     ]
 
+
 def _get_conda_packages(env):
     stdout, stderr, ret = conda_api.run_command(
         conda_api.Commands.LIST,
@@ -169,6 +175,7 @@ def _get_conda_packages(env):
     return [(i.split()[0], i.split()[1]) for i in stdout.splitlines()[3:]]
 
 ################## model selection
+
 
 def filter_models(device=None, cell=None, guppy=None, variant=None):
     all_models = model.get_models()
@@ -203,13 +210,16 @@ def filter_settings(models, setting):
     if setting == "medaka_variants":
         return filter_variants(models)
 
+
 def filter_devices(models):
     devs = ["prom", "min"]
     avail = [mod.split("_")[1] for mod in models if mod.split("_")[1] in devs]
     return ["--"] + list(set(avail))
 
+
 def filter_cells(models):
     return ["--"] + list(set([mod.split("_")[0] for mod in models]))
+
 
 def filter_guppy(models):
     avail = [
@@ -217,6 +227,7 @@ def filter_guppy(models):
         else mod.split("_")[-2] for mod in models
     ]
     return ["--"] + list(set(avail))
+
 
 def filter_variants(models):
     avail = [

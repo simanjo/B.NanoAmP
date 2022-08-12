@@ -5,11 +5,13 @@ import dearpygui.dearpygui as dpg
 import view
 from themes import custom_theme
 
+
 def _init_app():
 
     view.add_file_dialog()
     view.add_main_window()
     view.check_env_setup()
+
 
 def _start_app():
     dpg.bind_theme(custom_theme())
@@ -24,8 +26,8 @@ def _start_app():
 
     dpg.start_dearpygui()
 
-def main():
 
+def main():
 
     dpg.create_context()
 
@@ -37,4 +39,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
