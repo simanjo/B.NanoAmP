@@ -25,7 +25,7 @@ def execute_pipeline():
 def _preflight_check():
     bcfolder = dpg.get_value("bcfolder")
     if not os.path.isdir(bcfolder):
-        msg = f"Please specify a valid folder location."
+        msg = "Please specify a valid folder location."
         msg += f"\nThe given folder '{bcfolder}' does not exist."
         ErrorWindow(msg)
         return False
@@ -44,12 +44,14 @@ def _use_folder(path):
     return True
 
 
+def _is_fastq(name):
+    return (name.endswith(".fastq")
+            or name.endswith(".fastq.gz"))
+
+
 def _has_fastq(path):
     for entry in os.scandir(path):
-        if (entry.is_file() and (
-                entry.name.endswith(".fastq") or
-                entry.name.endswith(".fastq.gz")
-            )):
+        if (entry.is_file() and _is_fastq(entry.name)):
             return True
 
 
@@ -109,15 +111,15 @@ def set_conda_envs(envs, prefs):
 def init_conda_envs():
     for name, yml in model.get_conda_ymls():
         stdout, stderr, ret = conda_api.run_command(
-                conda_api.Commands.CREATE, "-n", name
-            )
+            conda_api.Commands.CREATE, "-n", name
+        )
         if ret != 0:
             raise OSError(ret, stderr)
         print(stdout)
         stdout, stderr, ret = conda_api.run_command(
-                conda_api.Commands.INSTALL, "-n", name, "--file", yml,
-                "--channel", "bioconda", "--channel", "conda-forge", "--yes"
-            )
+            conda_api.Commands.INSTALL, "-n", name, "--file", yml,
+            "--channel", "bioconda", "--channel", "conda-forge", "--yes"
+        )
         if ret != 0:
             raise OSError(ret, stderr)
         print(stdout)
@@ -143,9 +145,13 @@ def get_conda_setup():
         for pkg_name, ver in _get_conda_packages(env_name):
             if pkg_name in model.BINARIES:
                 pkgs_in_env.append(pkg_name)
-                if (not (pkg_name in prefs.keys() and
-                        version.parse(prefs[pkg_name][1]) > version.parse(ver))
-                    or env_name.startswith("nanoamp_")):
+                if (
+                    not (
+                        pkg_name in prefs.keys()
+                        and (version.parse(prefs[pkg_name][1])
+                             > version.parse(ver))
+                    ) or env_name.startswith("nanoamp_")
+                ):
                     prefs[pkg_name] = (pref, ver)
         if pkgs_in_env:
             envs[env_name] = pkgs_in_env
@@ -233,9 +239,10 @@ def filter_guppy(models):
 
 def filter_variants(models):
     avail = [
-        "_".join(mod.split("_")[1:-1]
-        if mod.split("_")[1] not in ["min", "prom"]
-        else mod.split("_")[2:-1] if mod.split("_")[-1].startswith("g")
-        else mod.split("_")[2:-2]) for mod in models
+        "_".join(
+            mod.split("_")[1:-1] if mod.split("_")[1] not in ["min", "prom"]
+            else mod.split("_")[2:-1] if mod.split("_")[-1].startswith("g")
+            else mod.split("_")[2:-2]
+        ) for mod in models
     ]
     return ["--"] + list(set(avail))

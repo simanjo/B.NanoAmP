@@ -11,7 +11,7 @@ BINARIES = [
     "minimap2",
     "racon",
     "medaka"
-    ]
+]
 
 PREFIXES = {}
 
@@ -171,7 +171,7 @@ def get_models():
 
 
 def _parse_models():
-    medaka_env = {"PATH": get_prefix('medaka')+f":{os.environ['PATH']}"}
+    medaka_env = {"PATH": get_prefix('medaka') + f":{os.environ['PATH']}"}
     proc = subprocess.run(
         ["medaka", "tools", "list_models"], capture_output=True, env=medaka_env
     )

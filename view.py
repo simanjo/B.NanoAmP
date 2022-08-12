@@ -212,7 +212,7 @@ def _toggle_medaka_model(sender) -> None:
     state = dpg.get_value(sender)
     dpg.configure_item(
         "medaka_cell",
-        enabled= not state, no_arrow_button=state
+        enabled=not state, no_arrow_button=state
     )
     dpg.configure_item(
         "medaka_device",
@@ -236,7 +236,7 @@ def _change_model_param(sender):
     update = []
     kwargs = {}
     for name in ["device", "cell", "guppy", "variant"]:
-        dpg_name = "medaka_"+name
+        dpg_name = "medaka_" + name
         if (val := dpg.get_value(dpg_name)) == "--":
             kwargs[name] = None
             update.append(dpg_name)

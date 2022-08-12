@@ -10,7 +10,7 @@ import model
 class PipelineStep(ABC):
 
     @abstractmethod
-    def run(self, wdir:str) -> None:
+    def run(self, wdir: str) -> None:
         pass
 
 
@@ -96,7 +96,6 @@ class CleanFilterStep(PipelineStep):
         pass
 
     def run(self, wdir):
-        dirname = os.path.split(wdir)[1]
         shutil.rmtree(os.path.join(wdir, "filtered_reads"))
 
 
@@ -158,7 +157,7 @@ class AssemblyStep(PipelineStep):
                 ["fold"], stdin=fasta_conv_awk.stdout, stdout=subprocess.PIPE
             )
             asm_output = os.path.join(
-                asm_dir, f"assembly.fasta"
+                asm_dir, "assembly.fasta"
             )
             with open(asm_output, 'wb') as out_fh:
                 shutil.copyfileobj(fasta_conv_fold.stdout, out_fh)
@@ -196,7 +195,7 @@ class AssemblyStep(PipelineStep):
                 shutil.copyfileobj(proc.stdout, out_fh)
 
         else:
-            raise NotImplemented(
+            raise NotImplementedError(
                 f"The assembly method {self.assembler} is not supported."
             )
 
@@ -266,7 +265,7 @@ class RaconPolishingStep(PipelineStep):
             polishing_call, stdout=subprocess.PIPE, env=env
         )
         polish_out = os.path.join(
-           polish_dir, "assembly.fasta"
+            polish_dir, "assembly.fasta"
         )
         with open(polish_out, 'wb') as out_fh:
             # ugly HACK?
@@ -490,7 +489,7 @@ def _get_medaka_call(threads, assembler, mod, is_racon, prefix):
     elif assembler == "Miniasm":
         fasta_folder = f"{dirname}_miniasm_assembly",
     else:
-        raise NotImplemented(
+        raise NotImplementedError(
             f"The assembly method {assembler} is not supported."
         )
     fasta = os.path.join(prefix, fasta_folder, "assembly.fasta")
