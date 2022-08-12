@@ -27,11 +27,17 @@ PREFIXES = {}
 
 # # split allmodels, remove first entry "Available:"
 # # and strip trailing "," all but last
-# allmodels = [mod[:-1] for mod in allmodels.split()[1:-1]] + [allmodels.split()[-1]]
-# pore = [mod.split("_")[0] for mod in allmodels]
-# guppy = [mod.split("_")[-1] if mod.split("_")[-1].startswith(g) else mod.split("_")[-2] for mod in allmodels]
-# variant = ["_".join(mod.split("_")[1:-1] if mod.split("_")[1] not in ["min", "prom"] else mod.split("_")[2:-1] if mod.split("_")[-1].startswith("g") else mod.split("_")[2:-2]) for mod in allmodels]
-######################################################## 
+# allmodels = [mod[:-1] for mod in allmodels.split()[1:-1]]
+#           + [allmodels.split()[-1]]
+# cell = [mod.split("_")[0] for mod in allmodels]
+# guppy = [mod.split("_")[-1] if mod.split("_")[-1].startswith("g")
+#          else mod.split("_")[-2] for mod in allmodels]
+# variant = ["_".join(mod.split("_")[1:-1]
+#             if mod.split("_")[1] not in ["min", "prom"]
+#            else mod.split("_")[2:-1]
+#             if mod.split("_")[-1].startswith("g")
+#            else mod.split("_")[2:-2]) for mod in allmodels]
+########################################################
 
 MODELS = None
 
@@ -79,7 +85,8 @@ DEVICES = {
 #     'e81_fast', 'e81_hac', 'e81_sup',
 #     'e81_fast_variant', 'e81_hac_variant', 'e81_sup_variant',
 #     'e82_400bps_fast', 'e82_400bps_hac', 'e82_400bps_sup',
-#     'e82_400bps_fast_variant', 'e82_400bps_hac_variant', 'e82_400bps_sup_variant',
+#     'e82_400bps_fast_variant', 'e82_400bps_hac_variant',
+#     'e82_400bps_sup_variant',
 #     'sup_plant', 'sup_plant_variant', 'high'
 # }
 
@@ -171,12 +178,13 @@ def _parse_models():
 
     if proc.returncode != 0:
         raise OSError(proc.returncode, proc.stderr.decode())
-    allmodels = proc.stdout.decode().splitlines()[0]
+    models = proc.stdout.decode().splitlines()[0]
 
     # split allmodels, remove first entry "Available:"
     # and strip trailing "," all but last
-    allmodels = [mod[:-1] for mod in allmodels.split()[1:-1]] + [allmodels.split()[-1]]
+    models = [mod[:-1] for mod in models.split()[1:-1]] + [models.split()[-1]]
     return allmodels
+
 
 def get_assemblers():
     return ["Flye", "Raven", "Miniasm"]

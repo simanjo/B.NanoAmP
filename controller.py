@@ -100,7 +100,9 @@ def _setup_pipeline():
 
 
 def set_conda_envs(envs, prefs):
-    prefixes = {pkg: os.path.join(pref, "bin") for pkg,(pref,_) in prefs.items()}
+    prefixes = {
+        pkg: os.path.join(pref, "bin") for pkg, (pref, _) in prefs.items()
+    }
     model.PREFIXES = prefixes
 
 

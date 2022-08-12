@@ -149,7 +149,7 @@ class AssemblyStep(PipelineStep):
                 shutil.copyfileobj(proc.stdout, out_fh)
 
             ################# HACK
-            # following awk '/^S/{print ">"$2"\n"$3}' assembly.gfa | fold > assembly.fasta
+            # cf awk '/^S/{print ">"$2"\n"$3}' assmb.gfa | fold > assmb.fasta
             fasta_conv_awk = subprocess.Popen(
                 ["awk", "/^S/{print \">\"$2\"\\n\"$3}", polish_output],
                 stdout=subprocess.PIPE
@@ -415,12 +415,14 @@ def _get_minimap_mapping(threads, prefix):
     filtered_reads = os.path.join(
         prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz'
     )
+    assembly = os.path.join(
+        prefix, f'{dirname}_flye_assembly', 'assembly.fasta'
+    )
     minimap = [
         "minimap2",
         "-ax", "map-ont",
         "-t", f"{threads}",
-        f"{os.path.join(prefix, f'{dirname}_flye_assembly', 'assembly.fasta')}",
-        f"{filtered_reads}"
+        f"{assembly}", f"{filtered_reads}"
     ]
     minimap_env = model.get_prefix('minimap2')
     env = {"PATH": f"{minimap_env}:{os.environ['PATH']}"}

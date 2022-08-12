@@ -16,7 +16,9 @@ def add_file_dialog():
 
 
 def add_main_window():
-    with dpg.window(tag="main_window", autosize=True, no_close=True, no_collapse=True):
+    with dpg.window(
+        tag="main_window", autosize=True, no_close=True, no_collapse=True
+    ):
         with dpg.tab_bar():
             with dpg.tab(label="Assembly Settings", tag="main_tab"):
                 _add_general_settings()
@@ -37,11 +39,16 @@ def check_env_setup(force=False):
         dpg.configure_item("medaka_manumodel", items=model.get_models())
         return
     print(prefs)
-    with dpg.window(modal=True, label="Checking Conda Setup", autosize=True, no_close=True, no_collapse=True, tag="conda_check"):
+    with dpg.window(
+        modal=True, label="Checking Conda Setup", autosize=True,
+        no_close=True, no_collapse=True, tag="conda_check"
+    ):
         _display_conda_setup(envs)
         dpg.add_spacer(height=20)
-        msg = f"Your conda setup is missing the required packages\n {missing}.\n"
-        msg += "Do you want to perform a fresh package setup now? (This might take a while...)"
+        msg = "Your conda setup is missing the required packages"
+        msg += f"\n{missing}.\n"
+        msg += "Do you want to perform a fresh package setup now? "
+        msg += "(This might take a while...)"
         dpg.add_text(msg)
         dpg.add_spacer(height=20)
         with dpg.group(horizontal=True):
