@@ -191,7 +191,8 @@ def _add_medaka_settings():
     with dpg.group(horizontal=True):
         dpg.add_combo(
             label="Model", tag="medaka_manumodel",
-            default_value="--", enabled=False, no_arrow_button=True
+            default_value="--", enabled=False, no_arrow_button=True,
+            callback=_select_medaka_model
         )
         dpg.add_checkbox(
             label="choose model manually",
@@ -230,6 +231,15 @@ def _toggle_medaka_model(sender) -> None:
         "medaka_manumodel",
         enabled=state, no_arrow_button=not state
     )
+
+
+def _select_medaka_model(sender):
+    mod = dpg.get_value(sender)
+    model_row = model.get_model_df().query(f"full_model == '{mod}'")
+    for name in "device", "cell", "guppy", "variant":
+        choice = model.get_display_names(name, model_row[name])[0]
+        dpg.set_value("medaka_" + name, choice)
+        dpg.configure_item("medaka_" + name, items=["--", choice])
 
 
 def _change_model_param(sender):
