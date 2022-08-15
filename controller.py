@@ -185,27 +185,26 @@ def _get_conda_packages(env):
 
 
 def filter_models(device=None, cell=None, guppy=None, variant=None):
-    all_models = model.get_models()
+    all_models = model.get_model_df()
+    query = ""
+    if device is not None:
+        query += f"device == '{device}'"
+    if cell is not None:
+        if query != "":
+            query += " & "
+        query += f"cell == '{cell}'"
+    if guppy is not None:
+        if query != "":
+            query += " & "
+        query += f"guppy == '{guppy}'"
+    if variant is not None:
+        if query != "":
+            query += " & "
+        query += f"variant == '{variant}'"
+    if query == "":
+        return all_models
+    return all_models.query(query)
 
-    def _filter(mod):
-        if cell is not None and mod.split("_")[0] != cell:
-            return False
-        if device is not None and mod.split("_")[1] != device:
-            return False
-        if guppy is not None and (
-            mod.split("_")[-1] != guppy or (
-                mod.split("_")[-1] == 'rle' and mod.split("_")[-2] != guppy
-            )
-        ):
-            return False
-        if variant is not None:
-            mod_split = mod.split("_")
-            start = 1 if mod_split[1] not in ["min", "prom"] else 2
-            end = -1 if mod_split[-1].startswith("g") else -2
-            return "_".join(mod_split[start:end]) == variant
-        return True
-
-    return [mod for mod in all_models if _filter(mod)]
 
 def filter_settings(models, setting):
     if setting == "medaka_device":

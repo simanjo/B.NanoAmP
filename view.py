@@ -233,22 +233,21 @@ def _toggle_medaka_model(sender) -> None:
 
 
 def _change_model_param(sender):
-    update = []
+    field_missing = False
     kwargs = {}
     for name in ["device", "cell", "guppy", "variant"]:
         dpg_name = "medaka_" + name
         if (val := dpg.get_value(dpg_name)) == "--":
             kwargs[name] = None
-            update.append(dpg_name)
+            field_missing = True
         else:
-            kwargs[name] = val
-    models = controller.filter_models(**kwargs)
-    if len(update) == 0 or len(models) == 1:
+            kwargs[name] = model.get_param_name(name, val)
+    update = controller.filter_models(**kwargs)
+    models = list(update['full_model'])
+    if not field_missing or len(models) == 1:
         dpg.set_value("medaka_manumodel", models[0])
     else:
-        for name in update:
-            models = controller.filter_settings(models, name)
-            dpg.configure_item(
-                name,
-                items = models
-            )
+        dpg.set_value("medaka_manumodel", "--")
+        for name in "device", "cell", "guppy", "variant":
+            choice = model.get_display_names(name, update[name])
+            dpg.configure_item("medaka_" + name, items=choice)
