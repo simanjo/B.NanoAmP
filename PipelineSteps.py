@@ -28,6 +28,7 @@ class DuplexStep(PipelineStep):
         if proc.returncode == 0:
             print(proc.returncode)
             print(proc.stdout.decode())
+            print(proc.stderr.decode())
         else:
             print(proc.returncode)
             print(proc.stdout.decode())
@@ -174,6 +175,7 @@ class AssemblyStep(PipelineStep):
             if proc.returncode == 0:
                 print(proc.returncode)
                 print(proc.stdout.decode())
+                print(proc.stderr.decode())
             else:
                 print(proc.returncode)
                 print(proc.stdout.decode())
@@ -294,6 +296,7 @@ class MedakaPolishingStep(PipelineStep):
         if proc.returncode == 0:
             print(proc.returncode)
             print(proc.stdout.decode())
+            print(proc.stderr.decode())
 
             dirname = os.path.split(wdir)[1]
             polish = "rm" if self.is_racon else "m"
