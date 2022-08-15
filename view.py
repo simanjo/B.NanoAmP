@@ -246,6 +246,9 @@ def _change_model_param(sender):
     models = list(update['full_model'])
     if not field_missing or len(models) == 1:
         dpg.set_value("medaka_manumodel", models[0])
+        for name in "device", "cell", "guppy", "variant":
+            choice = model.get_display_names(name, update[name])[0]
+            dpg.set_value("medaka_" + name, choice)
     else:
         dpg.set_value("medaka_manumodel", "--")
     for name in "device", "cell", "guppy", "variant":
