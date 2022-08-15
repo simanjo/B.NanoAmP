@@ -170,28 +170,28 @@ def _add_medaka_settings():
     with dpg.group(tag="medaka_automodel"):
         dpg.add_combo(
             label="FlowCell", tag="medaka_cell",
-            default_value="--", items=model.get_flow_cells(),
+            default_value="--", items=["--"] + model.get_flow_cells(),
             callback=_change_model_param
         )
         dpg.add_combo(
             label="Device", tag="medaka_device",
-            default_value="--", items=model.get_devices(),
+            default_value="--", items=["--"] + model.get_devices(),
             callback=_change_model_param
         )
         dpg.add_combo(
             label="Guppy Version", tag="medaka_guppy",
-            default_value="--", items=model.get_guppy_versions(),
+            default_value="--", items=["--"] + model.get_guppy_versions(),
             callback=_change_model_param
         )
         dpg.add_combo(
             label="Basecaller settings", tag="medaka_variant",
-            default_value="--", items=model.get_guppy_variants(),
+            default_value="--", items=["--"] + model.get_guppy_variants(),
             callback=_change_model_param
         )
     with dpg.group(horizontal=True):
         dpg.add_combo(
             label="Model", tag="medaka_manumodel",
-            default_value=None, enabled=False, no_arrow_button=True
+            default_value="--", enabled=False, no_arrow_button=True
         )
         dpg.add_checkbox(
             label="choose model manually",
@@ -249,5 +249,5 @@ def _change_model_param(sender):
     else:
         dpg.set_value("medaka_manumodel", "--")
         for name in "device", "cell", "guppy", "variant":
-            choice = model.get_display_names(name, update[name])
+            choice = ["--"] + model.get_display_names(name, update[name])
             dpg.configure_item("medaka_" + name, items=choice)

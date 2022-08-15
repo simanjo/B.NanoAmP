@@ -150,19 +150,19 @@ def get_prefix(pkg):
 
 
 def get_flow_cells():
-    return ["--"] + list(CELLS.values())
+    return list(CELLS.values())
 
 
 def get_devices():
-    return ["--"] + list(DEVICES.values())
+    return list(DEVICES.values())
 
 
 def get_guppy_versions():
-    return ["--"] + list(GUPPYVERS.values())
+    return list(GUPPYVERS.values())
 
 
 def get_guppy_variants():
-    return ["--"] + list(VARIANTS.values())
+    return list(VARIANTS.values())
 
 
 def get_display_names(name, selection):
@@ -178,11 +178,9 @@ def get_display_names(name, selection):
         msg = f"The parameter choice {name} is not supported.\n"
         msg += "Try one of 'cell', 'device', 'guppy' or 'variant'."
         raise NotImplementedError(msg)
-    print(selection)
-    print(df)
-    result = list(set([df[item] for item in selection]))
+    result = list(set([df[item] for item in selection if item != "--"]))
     result.sort()
-    return ["--"] + result
+    return result
 
 
 def get_param_name(name, val):
@@ -198,12 +196,12 @@ def get_param_name(name, val):
         msg = f"The parameter choice {name} is not supported.\n"
         msg += "Try one of 'cell', 'device', 'guppy' or 'variant'."
         raise NotImplementedError(msg)
+
     def _get_param(item):
         for key, val in df.items():
             if val == item:
                 return key
     return _get_param(val)
-
 
 
 def get_models():
