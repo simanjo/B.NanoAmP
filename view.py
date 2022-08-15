@@ -248,6 +248,6 @@ def _change_model_param(sender):
         dpg.set_value("medaka_manumodel", models[0])
     else:
         dpg.set_value("medaka_manumodel", "--")
-        for name in "device", "cell", "guppy", "variant":
-            choice = ["--"] + model.get_display_names(name, update[name])
-            dpg.configure_item("medaka_" + name, items=choice)
+    for name in "device", "cell", "guppy", "variant":
+        choice = ["--"] + model.get_display_names(name, update[name])
+        dpg.configure_item("medaka_" + name, items=choice)
