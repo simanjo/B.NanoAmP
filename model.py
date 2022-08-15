@@ -77,7 +77,8 @@ GUPPYVERS = {
 
 DEVICES = {
     "min": "MinION",
-    "prom": "PromethION"
+    "prom": "PromethION",
+    "": "unspecified"
 }
 
 # set(variant) = {
