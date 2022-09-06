@@ -133,6 +133,7 @@ def set_conda_envs(envs, prefs):
 def init_conda_envs():
     conda_path = model.get_prefix("conda")
     assert conda_path != ""
+    print("doing conda init")
 
     for name, yml in model.get_conda_ymls():
         proc = subprocess.run(
@@ -140,8 +141,8 @@ def init_conda_envs():
             env={'PATH': conda_path}
         )
         if proc.returncode != 0:
-            raise OSError(proc.returncode, proc.stderr)
-        print(proc.stdout)
+            raise OSError(proc.returncode, proc.stderr.decode())
+        print(proc.stdout.decode())
         dpg.set_value("log_text", f"Running install for {name}")
         proc = subprocess.run(
             [
@@ -151,8 +152,8 @@ def init_conda_envs():
             ], capture_output=True, env={'PATH': conda_path}
         )
         if proc.returncode != 0:
-            raise OSError(proc.returncode, proc.stderr)
-        print(proc.stdout)
+            raise OSError(proc.returncode, proc.stderr.decode())
+        print(proc.stdout.decode())
     set_conda_envs(*get_conda_setup())
 
 
@@ -193,13 +194,12 @@ def _get_conda_envs():
     conda_path = model.get_prefix("conda")
     assert conda_path != ""
 
-    print(conda_path)
     proc = subprocess.run(
         ["conda", "info", "--envs"], capture_output=True,
         env={'PATH': conda_path}
     )
     if proc.returncode != 0:
-        raise OSError(proc.returncode, proc.stderr)
+        raise OSError(proc.returncode, proc.stderr.decode())
     return [
         (
             env.split()[0] if len(env.split()) > 1 else "",
@@ -220,7 +220,8 @@ def _get_conda_packages(env):
     if proc.returncode != 0:
         raise OSError(proc.returncode, proc.stderr)
     return [
-        (i.split()[0], i.split()[1]) for i in proc.stdout.decode().splitlines()[3:]
+        (i.split()[0], i.split()[1])
+        for i in proc.stdout.decode().splitlines()[3:]
     ]
 
 ################## model selection
