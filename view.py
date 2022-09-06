@@ -1,4 +1,5 @@
 import os
+import webbrowser
 
 import dearpygui.dearpygui as dpg
 
@@ -32,6 +33,26 @@ def add_main_window():
 
 
 def check_env_setup(force=False):
+    while controller.get_conda_version() is None:
+        with dpg.window(
+            modal=True, label="Missing Conda", autosize=True,
+            no_close=True, no_collapse=True, tag="conda_missing"
+        ):
+            msg = "We could not find conda in your PATH or "
+            msg += "in the standard installation directories.\n"
+            msg += "Please supply a valid location for conda, "
+            msg += "or install a conda distribution (ie. miniconda)"
+            msg += "and try again."
+            dpg.add_text(msg)
+            dpg.add_spacer(height=20)
+            with dpg.group(horizontal=True):
+                dpg.add_button(
+                    label="Add conda path", callback=_add_conda_path
+                )
+                dpg.add_button(
+                    label="Install miniconda", callback=_miniconda_link
+                )
+                dpg.add_button(label="Abort", callback=dpg.stop_dearpygui)
     envs, prefs = controller.get_conda_setup()
     status, missing = controller.check_pkgs(envs)
     if status == "complete" and not force:
@@ -55,6 +76,31 @@ def check_env_setup(force=False):
             dpg.add_button(label="Yes", callback=_handle_conda_init)
             dpg.add_button(label="Abort", callback=dpg.stop_dearpygui)
     return
+
+
+def _miniconda_link():
+    webbrowser.open("https://docs.conda.io/en/latest/miniconda.html", new=2)
+    dpg.stop_dearpygui()
+
+
+def _add_conda_path():
+    def _choose_conda_dir(sender, app_data):
+        try:
+            fpath = list(app_data['selections'].values())[0]
+        except KeyError:
+            return
+        if not os.path.isdir(fpath):
+            fpath = os.path.abspath(
+                os.path.join(fpath, os.pardir)
+            )
+        assert os.path.isdir(fpath)
+        model.PREFIXES['conda'] = fpath
+
+    dpg.add_file_dialog(
+        label="Select Conda Binary Folder",
+        directory_selector=True, callback=_choose_conda_dir,
+        width=500, height=400
+    )
 
 
 def _handle_conda_init(sender):

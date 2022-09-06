@@ -147,7 +147,7 @@ def get_conda_ymls():
 
 
 def get_prefix(pkg):
-    return PREFIXES[pkg]
+    return PREFIXES.get(pkg, "")
 
 
 def get_flow_cells():
