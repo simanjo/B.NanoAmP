@@ -138,7 +138,7 @@ def init_conda_envs():
     for name, yml in model.get_conda_ymls():
         proc = subprocess.run(
             ["conda", "create", "-n", name], capture_output=True,
-            env={'PATH': conda_path}
+            env={'PATH': f"{os.environ['PATH']}:{conda_path}"}
         )
         if proc.returncode != 0:
             raise OSError(proc.returncode, proc.stderr.decode())
@@ -148,8 +148,9 @@ def init_conda_envs():
             [
                 "conda", "install", "-n", name, "--file", yml,
                 "--channel", "bioconda", "--channel", "conda-forge",
-                "--yes"
-            ], capture_output=True, env={'PATH': conda_path}
+                "--channel", "default", "--yes"
+            ], capture_output=True,
+            env={'PATH': f"{os.environ['PATH']}:{conda_path}"}
         )
         if proc.returncode != 0:
             raise OSError(proc.returncode, proc.stderr.decode())
@@ -196,7 +197,7 @@ def _get_conda_envs():
 
     proc = subprocess.run(
         ["conda", "info", "--envs"], capture_output=True,
-        env={'PATH': conda_path}
+        env={'PATH': f"{conda_path}:{os.environ['PATH']}"}
     )
     if proc.returncode != 0:
         raise OSError(proc.returncode, proc.stderr.decode())
@@ -215,7 +216,7 @@ def _get_conda_packages(env):
 
     proc = subprocess.run(
         ["conda", "list", "-n", env], capture_output=True,
-        env={'PATH': conda_path}
+        env={'PATH': f"{os.environ['PATH']}:{conda_path}"}
     )
     if proc.returncode != 0:
         raise OSError(proc.returncode, proc.stderr)
