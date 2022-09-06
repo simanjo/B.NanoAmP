@@ -86,7 +86,9 @@ def check_env_setup(force=False):
         with dpg.group(horizontal=True):
             dpg.add_button(label="Yes", callback=_handle_conda_init)
             dpg.add_button(label="Abort", callback=dpg.stop_dearpygui)
-    return
+        with dpg.group(horizontal=True, show=False, tag="progress_ind"):
+            dpg.add_text(tag="log_text")
+            dpg.add_loading_indicator()
 
 
 def _miniconda_link():
@@ -119,6 +121,7 @@ def _add_conda_path():
 
 
 def _handle_conda_init(sender):
+    dpg.configure_item("progress_ind", show=True)
     controller.init_conda_envs()
     dpg.configure_item("conda_check", show=False)
     dpg.configure_item("medaka_manumodel", items=model.get_models())

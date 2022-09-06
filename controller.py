@@ -142,6 +142,7 @@ def init_conda_envs():
         if proc.returncode != 0:
             raise OSError(proc.returncode, proc.stderr)
         print(proc.stdout)
+        dpg.set_value("log_text", f"Running install for {name}")
         proc = subprocess.run(
             [
                 "conda", "install", "-n", name, "--file", yml,
@@ -152,6 +153,7 @@ def init_conda_envs():
         if proc.returncode != 0:
             raise OSError(proc.returncode, proc.stderr)
         print(proc.stdout)
+    set_conda_envs(*get_conda_setup())
 
 
 def check_pkgs(envs):
