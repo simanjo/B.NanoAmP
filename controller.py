@@ -101,7 +101,7 @@ def _setup_pipeline():
 #################### Conda Setup ####################
 
 def get_conda_version():
-    home_path = os.environ(['HOME'])
+    home_path = os.environ['HOME']
     conda_default_paths = [
         model.get_prefix("conda"),
         os.environ["PATH"],
