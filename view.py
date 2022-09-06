@@ -20,7 +20,7 @@ def add_main_window():
     with dpg.window(
         tag="main_window", autosize=True, no_close=True, no_collapse=True
     ):
-        with dpg.tab_bar():
+        with dpg.tab_bar(tag="tab_bar"):
             with dpg.tab(label="Assembly Settings", tag="main_tab"):
                 _add_general_settings()
                 _add_filtlong_settings()
@@ -55,6 +55,10 @@ def check_env_setup(force=False):
                 dpg.add_button(label="Abort", callback=dpg.stop_dearpygui)
     envs, prefs = controller.get_conda_setup()
     status, missing = controller.check_pkgs(envs)
+    with dpg.tab(
+        label="Conda Setup", tag="conda_tab", parent="tab_bar"
+    ):
+        _display_conda_setup(envs)
     if status == "complete" and not force:
         controller.set_conda_envs(envs, prefs)
         dpg.configure_item("medaka_manumodel", items=model.get_models())
