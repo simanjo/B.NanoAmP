@@ -1,7 +1,6 @@
 import os
 import subprocess
 
-import conda.cli.python_api as conda_api
 import dearpygui.dearpygui as dpg
 from packaging import version
 
@@ -113,10 +112,12 @@ def get_conda_version():
         conda_version = subprocess.run(
             ["conda", "--version"], capture_output=True, env=env
         ).stdout.split()[-1]
-        conda_prefix = subprocess.run(
+        conda_bin = subprocess.run(
             ["which", "conda"], capture_output=True, env=env
-        ).stdout
-        model.PREFIXES['conda'] = conda_prefix
+        ).stdout.decode()
+        model.PREFIXES['conda'] = os.path.abspath(
+            os.path.join(conda_bin, os.pardir)
+        )
         return conda_version
     except FileNotFoundError:
         return None
@@ -130,20 +131,27 @@ def set_conda_envs(envs, prefs):
 
 
 def init_conda_envs():
+    conda_path = model.get_prefix("conda")
+    assert conda_path != ""
+
     for name, yml in model.get_conda_ymls():
-        stdout, stderr, ret = conda_api.run_command(
-            conda_api.Commands.CREATE, "-n", name
+        proc = subprocess.run(
+            ["conda", "create", "-n", name], capture_output=True,
+            env={'PATH': conda_path}
         )
-        if ret != 0:
-            raise OSError(ret, stderr)
-        print(stdout)
-        stdout, stderr, ret = conda_api.run_command(
-            conda_api.Commands.INSTALL, "-n", name, "--file", yml,
-            "--channel", "bioconda", "--channel", "conda-forge", "--yes"
+        if proc.returncode != 0:
+            raise OSError(proc.returncode, proc.stderr)
+        print(proc.stdout)
+        proc = subprocess.run(
+            [
+                "conda", "install", "-n", name, "--file", yml,
+                "--channel", "bioconda", "--channel", "conda-forge",
+                "--yes"
+            ], capture_output=True, env={'PATH': conda_path}
         )
-        if ret != 0:
-            raise OSError(ret, stderr)
-        print(stdout)
+        if proc.returncode != 0:
+            raise OSError(proc.returncode, proc.stderr)
+        print(proc.stdout)
 
 
 def check_pkgs(envs):
@@ -180,28 +188,38 @@ def get_conda_setup():
 
 
 def _get_conda_envs():
-    stdout, stderr, ret = conda_api.run_command(
-        conda_api.Commands.INFO, "--envs"
+    conda_path = model.get_prefix("conda")
+    assert conda_path != ""
+
+    print(conda_path)
+    proc = subprocess.run(
+        ["conda", "info", "--envs"], capture_output=True,
+        env={'PATH': conda_path}
     )
-    if ret != 0:
-        raise OSError(ret, stderr)
+    if proc.returncode != 0:
+        raise OSError(proc.returncode, proc.stderr)
     return [
         (
             env.split()[0] if len(env.split()) > 1 else "",
             env.split()[-1]
         )
-        for env in stdout.splitlines()[2:-1]
+        for env in proc.stdout.decode().splitlines()[2:-1]
     ]
 
 
 def _get_conda_packages(env):
-    stdout, stderr, ret = conda_api.run_command(
-        conda_api.Commands.LIST,
-        ["-n", env]
+    conda_path = model.get_prefix("conda")
+    assert conda_path != ""
+
+    proc = subprocess.run(
+        ["conda", "list", "-n", env], capture_output=True,
+        env={'PATH': conda_path}
     )
-    if ret != 0:
-        raise OSError(ret, stderr)
-    return [(i.split()[0], i.split()[1]) for i in stdout.splitlines()[3:]]
+    if proc.returncode != 0:
+        raise OSError(proc.returncode, proc.stderr)
+    return [
+        (i.split()[0], i.split()[1]) for i in proc.stdout.decode().splitlines()[3:]
+    ]
 
 ################## model selection
 
