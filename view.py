@@ -98,16 +98,7 @@ def _miniconda_link():
 
 def _add_conda_path():
     def _choose_conda_dir(sender, app_data):
-        try:
-            fpath = list(app_data['selections'].values())[0]
-        except KeyError:
-            return
-        if not os.path.isdir(fpath):
-            fpath = os.path.abspath(
-                os.path.join(fpath, os.pardir)
-            )
-        assert os.path.isdir(fpath)
-        model.PREFIXES['conda'] = fpath
+        model.PREFIXES['conda'] = app_data['file_path_name']
         if controller.get_conda_version() is not None:
             dpg.configure_item("conda_missing", show=False)
             check_env_setup()
@@ -149,21 +140,7 @@ def _display_conda_setup(envs):
 
 
 def _choose_dir(sender, app_data) -> None:
-
-    try:
-        fpath = list(app_data['selections'].values())[0]
-    except KeyError:
-        return
-
-    # HACK/TODO: dir chooser is buggy
-    # check path and strip last part if necessary
-    if not os.path.isdir(fpath):
-        fpath = os.path.abspath(
-            os.path.join(fpath, os.pardir)
-        )
-    assert os.path.isdir(fpath)
-
-    dpg.set_value("bcfolder", fpath)
+    dpg.set_value("bcfolder", app_data['file_path_name'])
     dpg.configure_item("bcfolder", show=True)
 
 
