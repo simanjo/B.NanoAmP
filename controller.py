@@ -136,13 +136,16 @@ def init_conda_envs():
     print("doing conda init")
 
     for name, yml in model.get_conda_ymls():
-        proc = subprocess.run(
-            ["conda", "create", "-n", name], capture_output=True,
-            env={'PATH': f"{os.environ['PATH']}:{conda_path}"}
-        )
-        if proc.returncode != 0:
-            raise OSError(proc.returncode, proc.stderr.decode())
-        print(proc.stdout.decode())
+        dpg.set_value("log_text", f"Checking for an environment named {name}")
+        if name not in [i[0] for i in _get_conda_envs()]:
+            print(f"Creating environment {name}")
+            proc = subprocess.run(
+                ["conda", "create", "-n", name, "--yes"], capture_output=True,
+                env={'PATH': f"{os.environ['PATH']}:{conda_path}"}
+            )
+            if proc.returncode != 0:
+                raise OSError(proc.returncode, proc.stderr.decode())
+            print(proc.stdout.decode())
         dpg.set_value("log_text", f"Running install for {name}")
         proc = subprocess.run(
             [
