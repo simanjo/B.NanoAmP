@@ -21,7 +21,9 @@ def add_main_window():
         tag="main_window", autosize=True, no_close=True, no_collapse=True
     ):
         with dpg.tab_bar(tag="tab_bar"):
-            with dpg.tab(label="Assembly Settings", tag="main_tab"):
+            with dpg.tab(
+                label="Assembly Settings", tag="main_tab", show=False
+            ):
                 _add_general_settings()
                 _add_filtlong_settings()
                 _add_assembler_settings()
@@ -32,38 +34,43 @@ def add_main_window():
                 )
 
 
-def check_env_setup(force=False):
-    while controller.get_conda_version() is None:
+def check_conda():
+    if controller.get_conda_version() is None:
         with dpg.window(
-            modal=True, label="Missing Conda", autosize=True,
+            label="Missing Conda", autosize=True,
             no_close=True, no_collapse=True, tag="conda_missing"
         ):
             msg = "We could not find conda in your PATH or "
             msg += "in the standard installation directories.\n"
             msg += "Please supply a valid location for conda, "
-            msg += "or install a conda distribution (ie. miniconda)"
+            msg += "or install a conda distribution (ie. miniconda) "
             msg += "and try again."
             dpg.add_text(msg)
             dpg.add_spacer(height=20)
             with dpg.group(horizontal=True):
                 dpg.add_button(
-                    label="Add conda path", callback=_add_conda_path
+                    label="Select conda path", callback=_add_conda_path
                 )
                 dpg.add_button(
-                    label="Install miniconda", callback=_miniconda_link
+                    label="Get miniconda", callback=_miniconda_link
                 )
                 dpg.add_button(label="Abort", callback=dpg.stop_dearpygui)
+    else:
+        check_env_setup()
+
+
+def check_env_setup(force=False):
     envs, prefs = controller.get_conda_setup()
     status, missing = controller.check_pkgs(envs)
-    with dpg.tab(
-        label="Conda Setup", tag="conda_tab", parent="tab_bar"
-    ):
-        _display_conda_setup(envs)
+    dpg.configure_item("main_tab", show=True)
     if status == "complete" and not force:
         controller.set_conda_envs(envs, prefs)
         dpg.configure_item("medaka_manumodel", items=model.get_models())
+        with dpg.tab(
+            label="Conda Setup", tag="conda_tab", parent="tab_bar",
+        ):
+            _display_conda_setup(envs)
         return
-    print(prefs)
     with dpg.window(
         modal=True, label="Checking Conda Setup", autosize=True,
         no_close=True, no_collapse=True, tag="conda_check"
@@ -99,11 +106,15 @@ def _add_conda_path():
             )
         assert os.path.isdir(fpath)
         model.PREFIXES['conda'] = fpath
+        if controller.get_conda_version() is not None:
+            dpg.configure_item("conda_missing", show=False)
+            check_env_setup()
 
+    dpg.configure_item("conda_missing", show=True)
     dpg.add_file_dialog(
         label="Select Conda Binary Folder",
         directory_selector=True, callback=_choose_conda_dir,
-        width=500, height=400
+        width=500, height=400, modal=True
     )
 
 
@@ -111,6 +122,10 @@ def _handle_conda_init(sender):
     controller.init_conda_envs()
     dpg.configure_item("conda_check", show=False)
     dpg.configure_item("medaka_manumodel", items=model.get_models())
+    with dpg.tab(
+        label="Conda Setup", tag="conda_tab", parent="tab_bar",
+    ):
+        _display_conda_setup(controller.get_conda_setup()[0])
 
 
 def _display_conda_setup(envs):

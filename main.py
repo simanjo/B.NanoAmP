@@ -10,7 +10,7 @@ def _init_app():
 
     view.add_file_dialog()
     view.add_main_window()
-    view.check_env_setup()
+    view.check_conda()
 
 
 def _start_app():
