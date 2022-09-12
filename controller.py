@@ -39,7 +39,10 @@ def _use_folder(folder):
         return False
     # safeguard against rerun from unclean environment
     # we do not want to recurse deeper in original folder
-    if folder.stem.startswith("original"):
+    if (
+        folder.stem.startswith("original")
+        or folder.stem.startswith("assemblies")
+    ):
         return False
     if dpg.get_value("skip_unclassified"):
         return not folder.stem.startswith("unclassified")
