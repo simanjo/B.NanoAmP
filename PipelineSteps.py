@@ -53,10 +53,10 @@ class DuplexStep(PipelineStep):
             for entry in split_dir.iterdir():
                 if entry.is_file():
                     if entry.suffix == ".gz":
-                        with gzip.open(entry.path, 'rb') as in_fh:
+                        with gzip.open(entry, 'rb') as in_fh:
                             shutil.copyfileobj(in_fh, out_fh)
                     elif entry.suffix == ".fastq":
-                        with open(entry.path, 'rb') as in_fh:
+                        with open(entry, 'rb') as in_fh:
                             shutil.copyfileobj(in_fh, out_fh)
 
 
