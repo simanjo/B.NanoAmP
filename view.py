@@ -143,6 +143,7 @@ def _choose_dir(sender, app_data) -> None:
     dir = app_data['file_path_name']
     dpg.set_value("bcfolder", dir)
     dpg.configure_item("bcfolder", show=True)
+    controller.check_coverages(Path(dir))
 
 
 def _add_general_settings():
