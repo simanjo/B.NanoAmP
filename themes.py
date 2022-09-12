@@ -5,7 +5,7 @@ import dearpygui.dearpygui as dpg
 def custom_theme():
     with dpg.theme() as theme:
         with dpg.theme_component():
-            dpg.add_theme_style(dpg.mvStyleVar_FrameRounding          , 9)
+            dpg.add_theme_style(dpg.mvStyleVar_FrameRounding          , 6)
             dpg.add_theme_color(dpg.mvPlotCol_FrameBg       , (1.00 * 255, 1.00 * 255, 1.00 * 255, 1.00 * 255), category=dpg.mvThemeCat_Plots)
             dpg.add_theme_color(dpg.mvPlotCol_PlotBg        , (0.42 * 255, 0.57 * 255, 1.00 * 255, 0.13 * 255), category=dpg.mvThemeCat_Plots)
             dpg.add_theme_color(dpg.mvPlotCol_PlotBorder    , (0.00 * 255, 0.00 * 255, 0.00 * 255, 0.00 * 255), category=dpg.mvThemeCat_Plots)
