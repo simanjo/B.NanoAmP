@@ -1,5 +1,6 @@
 import webbrowser
 from pathlib import Path
+import time
 
 import dearpygui.dearpygui as dpg
 
@@ -168,12 +169,21 @@ def _add_general_settings():
         label="Threads", tag="threads", default_value=8
     )
     dpg.add_input_float(
-        label="Genome Size [MB]", tag="genome_size", default_value=4.2
+        label="Genome Size [MB]", tag="genome_size", default_value=4.2,
+        callback=_change_genome_size
     )
     dpg.add_input_int(
         label="Coverage", tag="coverage", default_value=100
     )
     dpg.add_separator()
+
+
+def _change_genome_size(sender, app_data):
+    # wait shortly and check whether the value has changed
+    val = dpg.get_value(sender)
+    time.sleep(2)
+    if dpg.get_value(sender) == val:
+        controller.check_coverages(Path(dpg.get_value("bcfolder")))
 
 
 def _add_filtlong_settings():

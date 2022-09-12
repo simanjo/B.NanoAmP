@@ -93,7 +93,7 @@ def check_coverages(dir):
             msg.append(f"Coverage in {folder.relative_to(dir)} is below 30x. ")
             msg.append("Typing might be imprecise and ",)
             msg.append("further sequencing is recommended.\n")
-        elif cov < 90:
+        elif cov < 50:
             msg.append(f"Coverage in {folder.relative_to(dir)} is below 50x. ")
             msg.append("Racon polishing is recommended, ")
             msg.append("to potentially enhance typing.\n")
