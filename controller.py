@@ -1,5 +1,6 @@
 import os
 import subprocess
+from pathlib import Path
 
 import dearpygui.dearpygui as dpg
 from packaging import version
@@ -100,12 +101,13 @@ def _setup_pipeline():
 #################### Conda Setup ####################
 
 def get_conda_version():
-    home_path = os.environ['HOME']
     conda_default_paths = [
         model.get_prefix("conda"),
         os.environ["PATH"],
-        os.path.join(home_path, "miniconda3", "bin"),
-        os.path.join(home_path, "anaconda3", "bin")
+        Path.home() / "miniconda3" / "bin",
+        Path.home() / "anaconda3" / "bin",
+        "/opt/anaconda3/bin",
+        "/opt/miniconda3/bin"
     ]
     env = {'PATH': ":".join(conda_default_paths)}
     try:
@@ -115,9 +117,7 @@ def get_conda_version():
         conda_bin = subprocess.run(
             ["which", "conda"], capture_output=True, env=env
         ).stdout.decode()
-        model.PREFIXES['conda'] = os.path.abspath(
-            os.path.join(conda_bin, os.pardir)
-        )
+        model.PREFIXES['conda'] = Path(conda_bin).stem
         return conda_version
     except FileNotFoundError:
         return None
@@ -125,7 +125,7 @@ def get_conda_version():
 
 def set_conda_envs(envs, prefs):
     prefixes = {
-        pkg: os.path.join(pref, "bin") for pkg, (pref, _) in prefs.items()
+        pkg: pref / "bin" for pkg, (pref, _) in prefs.items()
     } | {'conda': model.get_prefix('conda')}
     model.PREFIXES = prefixes
 

@@ -1,4 +1,5 @@
 import webbrowser
+from pathlib import Path
 
 import dearpygui.dearpygui as dpg
 
@@ -139,7 +140,8 @@ def _display_conda_setup(envs):
 
 
 def _choose_dir(sender, app_data) -> None:
-    dpg.set_value("bcfolder", app_data['file_path_name'])
+    dir = app_data['file_path_name']
+    dpg.set_value("bcfolder", dir)
     dpg.configure_item("bcfolder", show=True)
 
 

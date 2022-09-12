@@ -1,5 +1,6 @@
 import os
 import subprocess
+from pathlib import Path
 
 import pandas as pd
 
@@ -131,17 +132,15 @@ VARIANTS = {
 
 
 def get_conda_ymls():
-    res_dir = os.path.abspath(
-        os.path.join(os.path.realpath(__file__), os.path.pardir, "ressources")
-    )
+    res_dir = Path(__file__).parent / "ressources"
     return [
         (
             "nanoamp_assmb",
-            os.path.join(res_dir, "cgMLSTassemble_environment")
+            res_dir / "cgMLSTassemble_environment"
         ),
         (
             "nanoamp_medaka",
-            os.path.join(res_dir, "medaka_environment")
+            res_dir / "medaka_environment"
         )
     ]
 

@@ -1,4 +1,5 @@
 import gzip
+import sys
 import os
 import shutil
 import subprocess
@@ -34,23 +35,23 @@ class DuplexStep(PipelineStep):
             print(proc.stdout.decode())
             print(proc.stderr.decode())
 
-        orig_dir = os.path.join(wdir, "original")
-        os.makedirs(orig_dir)
-        for entry in os.scandir(wdir):
-            if entry.is_file() and entry.name.endswith("fastq.gz"):
+        orig_dir = wdir / "original"
+        orig_dir.mkdir()
+        for entry in wdir.iterdir():
+            if entry.is_file() and ".fastq" in entry.suffixes:
                 # shutil needs str-like src directory until python 3.9
                 # https://bugs.python.org/issue32689
-                shutil.move(entry.path, orig_dir)
+                if sys.version_info < (3, 9):
+                    shutil.move(str(entry), orig_dir)
+                else:
+                    shutil.move(entry, orig_dir)
 
         # copy everything
-        dirname = os.path.split(wdir)[1]
-        outfile = os.path.join(
-            wdir, f"{dirname}.fastq.gz"
-        )
-        split_dir = os.path.join(wdir, f"{dirname}_split")
+        outfile = wdir / f"{wdir.stem}.fastq.gz"
+        split_dir = wdir / f"{wdir.stem}_split"
         with gzip.open(outfile, 'wb') as out_fh:
-            for entry in os.scandir(split_dir):
-                if entry.is_file() and entry.name.endswith("fastq.gz"):
+            for entry in split_dir.iterdir():
+                if entry.is_file() and entry.suffixes == [".fastq", ".gz"]:
                     with gzip.open(entry.path, 'rb') as in_fh:
                         shutil.copyfileobj(in_fh, out_fh)
 
@@ -60,8 +61,7 @@ class CleanDuplexStep(PipelineStep):
         pass
 
     def run(self, wdir):
-        dirname = os.path.split(wdir)[1]
-        shutil.rmtree(os.path.join(wdir, f"{dirname}_split"))
+        shutil.rmtree(wdir / f"{wdir.stem}_split")
 
 
 class FilterStep(PipelineStep):
@@ -71,10 +71,9 @@ class FilterStep(PipelineStep):
         self.target_bases = target_bases
 
     def run(self, wdir: str) -> None:
-        filtered_dir = os.path.join(wdir, "filtered_reads")
-        os.makedirs(filtered_dir)
+        filtered_dir = wdir / "filtered_reads"
+        filtered_dir.mkdir()
 
-        dirname = os.path.split(wdir)[1]
         filtlong_call, env = _get_filtlong_call(
             self.min_len, self.target_bases, wdir
         )
@@ -82,13 +81,9 @@ class FilterStep(PipelineStep):
         proc = subprocess.Popen(
             filtlong_call, stdout=subprocess.PIPE, env=env
         )
-        filtered_reads = os.path.join(
-            filtered_dir, f"{dirname}_filtered.fastq.gz"
-        )
+        filtered_reads = filtered_dir / f"{wdir.stem}_filtered.fastq.gz"
+
         with gzip.open(filtered_reads, 'wb') as out_fh:
-            # ugly HACK? Is this supposed to be ok?
-            # use stdout PIPE as filelike input to copy
-            # implicitly calls communicate?
             shutil.copyfileobj(proc.stdout, out_fh)
 
 
@@ -97,7 +92,7 @@ class CleanFilterStep(PipelineStep):
         pass
 
     def run(self, wdir):
-        shutil.rmtree(os.path.join(wdir, "filtered_reads"))
+        shutil.rmtree(wdir / "filtered_reads")
 
 
 class AssemblyStep(PipelineStep):
@@ -108,9 +103,8 @@ class AssemblyStep(PipelineStep):
 
     def run(self, wdir: str) -> None:
         if self.assembler == "Miniasm":
-            dirname = os.path.split(wdir)[1]
-            asm_dir = os.path.join(wdir, f"{dirname}_miniasm_assembly")
-            os.makedirs(asm_dir)
+            asm_dir = wdir / f"{wdir.stem}_miniasm_assembly"
+            asm_dir.mkdir()
 
             minimap_call, env = _get_minimap_overlap(
                 self.threads, wdir
@@ -118,9 +112,7 @@ class AssemblyStep(PipelineStep):
             proc = subprocess.Popen(
                 minimap_call, stdout=subprocess.PIPE, env=env
             )
-            read_overlap = os.path.join(
-                asm_dir, f"{dirname}_overlap.paf.gz"
-            )
+            read_overlap = asm_dir / f"{wdir.stem}_overlap.paf.gz"
             with gzip.open(read_overlap, 'wb') as out_fh:
                 shutil.copyfileobj(proc.stdout, out_fh)
 
@@ -130,9 +122,7 @@ class AssemblyStep(PipelineStep):
             proc = subprocess.Popen(
                 assembler_call, stdout=subprocess.PIPE, env=env
             )
-            asm_output = os.path.join(
-                asm_dir, f"{dirname}_unpolished_assembly.gfa"
-            )
+            asm_output = asm_dir / f"{wdir.stem}_unpolished_assembly.gfa"
             with open(asm_output, 'wb') as out_fh:
                 shutil.copyfileobj(proc.stdout, out_fh)
 
@@ -142,9 +132,7 @@ class AssemblyStep(PipelineStep):
             proc = subprocess.Popen(
                 polish_call, stdout=subprocess.PIPE, env=env
             )
-            polish_output = os.path.join(
-                asm_dir, f"{dirname}_assembly.gfa"
-            )
+            polish_output = asm_dir / f"{wdir.stem}_assembly.gfa"
             with open(polish_output, 'wb') as out_fh:
                 shutil.copyfileobj(proc.stdout, out_fh)
 
@@ -157,9 +145,7 @@ class AssemblyStep(PipelineStep):
             fasta_conv_fold = subprocess.Popen(
                 ["fold"], stdin=fasta_conv_awk.stdout, stdout=subprocess.PIPE
             )
-            asm_output = os.path.join(
-                asm_dir, "assembly.fasta"
-            )
+            asm_output = asm_dir / "assembly.fasta"
             with open(asm_output, 'wb') as out_fh:
                 shutil.copyfileobj(fasta_conv_fold.stdout, out_fh)
             ######################
@@ -182,9 +168,8 @@ class AssemblyStep(PipelineStep):
                 print(proc.stderr.decode())
 
         elif self.assembler == "Raven":
-            dirname = os.path.split(wdir)[1]
-            asm_dir = os.path.join(wdir, f"{dirname}_raven_assembly")
-            os.makedirs(asm_dir)
+            asm_dir = wdir / f"{wdir.stem}_raven_assembly"
+            asm_dir.mkdir()
             assembler_call, env = _get_raven_call(
                 self.threads, wdir
             )
@@ -192,7 +177,7 @@ class AssemblyStep(PipelineStep):
             proc = subprocess.Popen(
                 assembler_call, stdout=subprocess.PIPE, env=env
             )
-            asm_output = os.path.join(asm_dir, "assembly.fasta")
+            asm_output = asm_dir / "assembly.fasta"
             with open(asm_output, 'wb') as out_fh:
                 shutil.copyfileobj(proc.stdout, out_fh)
 
@@ -208,28 +193,30 @@ class CleanAssemblyStep(PipelineStep):
         self.is_racon = is_racon and assembler == "Flye"
 
     def run(self, wdir):
-        dirname = os.path.split(wdir)[1]
-        asm_name = f"{dirname}_{self.assembler.lower()}_assembly"
-        shutil.rmtree(os.path.join(wdir, asm_name))
+        asm_name = f"{wdir.stem}_{self.assembler.lower()}_assembly"
+        shutil.rmtree(wdir / asm_name)
 
         if self.is_racon:
-            mapping_dir = os.path.join(wdir, "nanopore_mapping")
-            polish_dir = os.path.join(
-                wdir, f"{dirname}_racon_polishing"
-            )
+            mapping_dir = wdir / "nanopore_mapping"
+            polish_dir = wdir / f"{wdir.stem}_racon_polishing"
             shutil.rmtree(mapping_dir)
             shutil.rmtree(polish_dir)
 
-        medaka_dir = os.path.join(wdir, "medaka_polished")
+        medaka_dir = wdir / "medaka_polished"
         shutil.rmtree(medaka_dir)
 
-        asm_dir = os.path.join(wdir, "assemblies")
-        if not os.path.isdir(asm_dir):
-            os.makedirs(asm_dir)
+        asm_dir = wdir / "assemblies"
+        if not asm_dir.is_dir():
+            asm_dir.mkdir()
         polish_flag = "rm" if self.is_racon else "m"
-        fasta_name = f"{dirname}_{self.assembler}_{polish_flag}_coverage.fasta"
-        if (os.path.isfile(os.path.join(wdir, fasta_name))):
-            shutil.move(os.path.join(wdir, fasta_name), asm_dir)
+        fasta = f"{wdir.stem}_{self.assembler}_{polish_flag}_coverage.fasta"
+        if (wdir / fasta).is_file():
+            # shutil needs str-like src directory until python 3.9
+            # https://bugs.python.org/issue32689
+            if sys.version_info < (3, 9):
+                shutil.move(str(wdir / fasta), asm_dir)
+            else:
+                shutil.move(wdir / fasta, asm_dir)
 
 
 class RaconPolishingStep(PipelineStep):
@@ -237,11 +224,10 @@ class RaconPolishingStep(PipelineStep):
         self.threads = threads
 
     def run(self, wdir):
-        dirname = os.path.split(wdir)[1]
-        mapping_dir = os.path.join(wdir, "nanopore_mapping")
-        os.makedirs(mapping_dir)
-        polish_dir = os.path.join(wdir, f"{dirname}_racon_polishing")
-        os.makedirs(polish_dir)
+        mapping_dir = wdir / "nanopore_mapping"
+        mapping_dir.mkdir()
+        polish_dir = wdir / f"{wdir.stem}_racon_polishing"
+        polish_dir.mkdir()
 
         minimap_call, env = _get_minimap_mapping(
             self.threads, wdir
@@ -250,13 +236,8 @@ class RaconPolishingStep(PipelineStep):
         proc = subprocess.Popen(
             minimap_call, stdout=subprocess.PIPE, env=env
         )
-        mapping = os.path.join(
-            mapping_dir, "mapping.sam"
-        )
+        mapping = mapping_dir / "mapping.sam"
         with open(mapping, 'wb') as out_fh:
-            # ugly HACK?
-            # use stdout PIPE as filelike input to copy
-            # implicitly calls communicate?
             shutil.copyfileobj(proc.stdout, out_fh)
 
         polishing_call, env = _get_racon_call(
@@ -266,13 +247,8 @@ class RaconPolishingStep(PipelineStep):
         proc = subprocess.Popen(
             polishing_call, stdout=subprocess.PIPE, env=env
         )
-        polish_out = os.path.join(
-            polish_dir, "assembly.fasta"
-        )
+        polish_out = polish_dir / "assembly.fasta"
         with open(polish_out, 'wb') as out_fh:
-            # ugly HACK?
-            # use stdout PIPE as filelike input to copy
-            # implicitly calls communicate?
             shutil.copyfileobj(proc.stdout, out_fh)
 
 
@@ -298,14 +274,21 @@ class MedakaPolishingStep(PipelineStep):
             print(proc.stdout.decode())
             print(proc.stderr.decode())
 
-            dirname = os.path.split(wdir)[1]
             polish = "rm" if self.is_racon else "m"
-            fasta_name = f"{dirname}_{self.assembler}_{polish}_coverage.fasta"
+            fasta = f"{wdir.stem}_{self.assembler}_{polish}_coverage.fasta"
 
-            shutil.move(
-                os.path.join(wdir, "medaka_polished", "consensus.fasta"),
-                os.path.join(wdir, fasta_name)
-            )
+            # shutil needs str-like src directory until python 3.9
+            # https://bugs.python.org/issue32689
+            if sys.version_info < (3, 9):
+                shutil.move(
+                    str(wdir / "medaka_polished" / "consensus.fasta"),
+                    wdir / fasta
+                )
+            else:
+                shutil.move(
+                    wdir / "medaka_polished" / "consensus.fasta",
+                    wdir / fasta
+                )
 
         else:
             print(proc.returncode)
@@ -318,12 +301,14 @@ class FinalCleanStep(PipelineStep):
         pass
 
     def run(self, wdir: str) -> None:
-        dirname = os.path.split(wdir)[1]
-        os.remove(os.path.join(wdir, f"{dirname}.fastq.gz"))
-        for entry in os.scandir(os.path.join(wdir, "original")):
-            shutil.move(entry.path, wdir)
+        (wdir / f"{wdir.stem}.fastq.gz").unlink()
+        for entry in (wdir / "original").iterdir():
+            if sys.version_info < (3, 9):
+                shutil.move(str(entry), wdir)
+            else:
+                shutil.move(entry, wdir)
         try:
-            os.rmdir(os.path.join(wdir, "original"))
+            (wdir / "original").rmdir()
         except OSError:
             print("Couldn't delete copy of original files")
 
@@ -332,12 +317,11 @@ class FinalCleanStep(PipelineStep):
 
 
 def _get_duplex_call(threads, prefix):
-    dirname = os.path.split(prefix)[1]
     duplex = [
         "duplex_tools",
         "split_on_adapter",
         f"{prefix}",
-        f"{os.path.join(prefix, f'{dirname}_split')}",
+        f"{prefix / f'{prefix.stem}_split'}",
         "Native",
         "--threads",
         f"{threads}"
@@ -348,7 +332,6 @@ def _get_duplex_call(threads, prefix):
 
 
 def _get_filtlong_call(min_len, target_bases, prefix):
-    dirname = os.path.split(prefix)[1]
     filtlong = [
         "filtlong",
         "--min_length",
@@ -356,7 +339,7 @@ def _get_filtlong_call(min_len, target_bases, prefix):
         "--keep_percent 90",
         "--target_bases",
         f"{target_bases}",
-        f"{os.path.join(prefix, f'{dirname}.fastq.gz')}"
+        f"{prefix / f'{prefix.stem}.fastq.gz'}"
     ]
     filtlong_env = model.get_prefix("filtlong")
     env = {"PATH": f"{filtlong_env}:{os.environ['PATH']}"}
@@ -364,14 +347,13 @@ def _get_filtlong_call(min_len, target_bases, prefix):
 
 
 def _get_flye_call(threads, prefix):
-    dirname = os.path.split(prefix)[1]
-    filtered_reads = os.path.join(
-        prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz'
+    filtered_reads = (
+        prefix / 'filtered_reads' / f'{prefix.stem}_filtered.fastq.gz'
     )
     flye = [
         "flye",
         "-o",
-        f"{os.path.join(prefix, f'{dirname}_flye_assembly')}",
+        f"{prefix / f'{prefix.stem}_flye_assembly'}",
         "--threads", f"{threads}",
         "--nano-hq",
         f"{filtered_reads}"
@@ -382,9 +364,8 @@ def _get_flye_call(threads, prefix):
 
 
 def _get_raven_call(threads, prefix):
-    dirname = os.path.split(prefix)[1]
-    filtered_reads = os.path.join(
-        prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz'
+    filtered_reads = (
+        prefix / 'filtered_reads' / f'{prefix.stem}_filtered.fastq.gz'
     )
     raven = [
         "raven",
@@ -397,9 +378,8 @@ def _get_raven_call(threads, prefix):
 
 
 def _get_minimap_overlap(threads, prefix):
-    dirname = os.path.split(prefix)[1]
-    filtered_reads = os.path.join(
-        prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz'
+    filtered_reads = (
+        prefix / 'filtered_reads' / f'{prefix.stem}_filtered.fastq.gz'
     )
     minimap = [
         "minimap2",
@@ -413,12 +393,11 @@ def _get_minimap_overlap(threads, prefix):
 
 
 def _get_minimap_mapping(threads, prefix):
-    dirname = os.path.split(prefix)[1]
-    filtered_reads = os.path.join(
-        prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz'
+    filtered_reads = (
+        prefix / 'filtered_reads' / f'{prefix.stem}_filtered.fastq.gz'
     )
-    assembly = os.path.join(
-        prefix, f'{dirname}_flye_assembly', 'assembly.fasta'
+    assembly = (
+        prefix / f'{prefix.stem}_flye_assembly' / 'assembly.fasta'
     )
     minimap = [
         "minimap2",
@@ -432,12 +411,11 @@ def _get_minimap_mapping(threads, prefix):
 
 
 def _get_miniasm_call(threads, prefix):
-    dirname = os.path.split(prefix)[1]
-    filtered_reads = os.path.join(
-        prefix, "filtered_reads", f"{dirname}_filtered.fastq.gz"
+    filtered_reads = (
+        prefix / "filtered_reads" / f"{prefix.stem}_filtered.fastq.gz"
     )
-    asm_dir = os.path.join(prefix, f"{dirname}_miniasm_assembly")
-    overlap = os.path.join(asm_dir, f"{dirname}_overlap.paf.gz")
+    asm_dir = prefix / f"{prefix.stem}_miniasm_assembly"
+    overlap = asm_dir / f"{prefix.stem}_overlap.paf.gz"
     miniasm = ["miniasm", "-f", filtered_reads, overlap]
     miniasm_env = model.get_prefix('miniasm')
     env = {"PATH": f"{miniasm_env}:{os.environ['PATH']}"}
@@ -445,12 +423,11 @@ def _get_miniasm_call(threads, prefix):
 
 
 def _get_minipolish_call(threads, prefix):
-    dirname = os.path.split(prefix)[1]
-    filtered_reads = os.path.join(
-        prefix, "filtered_reads", f"{dirname}_filtered.fastq.gz"
+    filtered_reads = (
+        prefix / "filtered_reads" / f"{prefix.stem}_filtered.fastq.gz"
     )
-    asm_dir = os.path.join(prefix, f"{dirname}_miniasm_assembly")
-    assembly = os.path.join(asm_dir, f"{dirname}_unpolished_assembly.gfa")
+    asm_dir = prefix / f"{prefix.stem}_miniasm_assembly"
+    assembly = asm_dir / f"{prefix.stem}_unpolished_assembly.gfa"
     minipolish = ["minipolish", "-t", f"{threads}", filtered_reads, assembly]
     minipolish_env = model.get_prefix('minipolish')
     env = {"PATH": f"{minipolish_env}:{os.environ['PATH']}"}
@@ -458,9 +435,8 @@ def _get_minipolish_call(threads, prefix):
 
 
 def _get_racon_call(threads, prefix):
-    dirname = os.path.split(prefix)[1]
-    filtered_reads = os.path.join(
-        prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz'
+    filtered_reads = (
+        prefix / 'filtered_reads' / f'{prefix.stem}_filtered.fastq.gz'
     )
     racon = [
         "racon",
@@ -468,8 +444,8 @@ def _get_racon_call(threads, prefix):
         "-g", "-8", "-w", "500",
         "--threads", f"{threads}",
         f"{filtered_reads}",
-        f"{os.path.join(prefix, 'nanopore_mapping', 'mapping.sam')}",
-        f"{os.path.join(prefix, f'{dirname}_flye_assembly', 'assembly.fasta')}"
+        f"{prefix / 'nanopore_mapping' / 'mapping.sam'}",
+        f"{prefix / f'{prefix.stem}_flye_assembly' / 'assembly.fasta'}"
     ]
     racon_env = model.get_prefix('racon')
     env = {"PATH": f"{racon_env}:{os.environ['PATH']}"}
@@ -477,30 +453,29 @@ def _get_racon_call(threads, prefix):
 
 
 def _get_medaka_call(threads, assembler, mod, is_racon, prefix):
-    dirname = os.path.split(prefix)[1]
-    filtered_reads = os.path.join(
-        prefix, 'filtered_reads', f'{dirname}_filtered.fastq.gz'
+    filtered_reads = (
+        prefix / 'filtered_reads' / f'{prefix.stem}_filtered.fastq.gz'
     )
     fasta_folder = None
     if assembler == "Flye":
         if is_racon:
-            fasta_folder = f"{dirname}_racon_polishing"
+            fasta_folder = f"{prefix.stem}_racon_polishing"
         else:
-            fasta_folder = f"{dirname}_flye_assembly"
+            fasta_folder = f"{prefix.stem}_flye_assembly"
     elif assembler == "Raven":
-        fasta_folder = f"{dirname}_raven_assembly"
+        fasta_folder = f"{prefix.stem}_raven_assembly"
     elif assembler == "Miniasm":
-        fasta_folder = f"{dirname}_miniasm_assembly"
+        fasta_folder = f"{prefix.stem}_miniasm_assembly"
     else:
         raise NotImplementedError(
             f"The assembly method {assembler} is not supported."
         )
-    fasta = os.path.join(prefix, fasta_folder, "assembly.fasta")
+    fasta = prefix / fasta_folder / "assembly.fasta"
     medaka = [
         "medaka_consensus",
         "-i", f"{filtered_reads}",
         "-d", f"{fasta}",
-        "-o", f"{os.path.join(prefix, 'medaka_polished')}",
+        "-o", f"{prefix / 'medaka_polished'}",
         "-t", f"{threads}",
         "-m", f"{mod}"
     ]
