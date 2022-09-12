@@ -14,57 +14,54 @@ import model
 
 
 def execute_pipeline():
-    if not _preflight_check():
+    dir = Path(dpg.get_value("bcfolder"))
+    print(f"Working in {dir}")
+    if not _preflight_check(dir):
         return
-    steps, folder_iter = _setup_pipeline()
-    for folder in folder_iter:
+    steps = _setup_pipeline()
+    for folder in _fastq_folder_iter(dir):
         print(f"Executing in {folder}")
         for step in steps:
             step.run(folder)
 
 
-def _preflight_check():
-    bcfolder = dpg.get_value("bcfolder")
-    if not os.path.isdir(bcfolder):
+def _preflight_check(dir):
+    if not dir.is_dir():
         msg = "Please specify a valid folder location."
-        msg += f"\nThe given folder '{bcfolder}' does not exist."
+        msg += f"\nThe given folder '{dir}' does not exist."
         ErrorWindow(msg)
         return False
     return True
 
 
-def _use_folder(path):
-    if not path.is_dir() or not _has_fastq(path):
+def _use_folder(folder):
+    if not folder.is_dir() or not _has_fastq(folder):
         return False
     # safeguard against rerun from unclean environment
     # we do not want to recurse deeper in original folder
-    if path.name.startswith("original"):
+    if folder.stem.startswith("original"):
         return False
     if dpg.get_value("skip_unclassified"):
-        return not path.name.startswith("unclassified")
+        return not folder.stem.startswith("unclassified")
     return True
 
 
-def _is_fastq(name):
-    return (name.endswith(".fastq")
-            or name.endswith(".fastq.gz"))
-
-
-def _has_fastq(path):
-    for entry in os.scandir(path):
-        if (entry.is_file() and _is_fastq(entry.name)):
+def _has_fastq(folder):
+    for entry in folder.iterdir():
+        if (entry.is_file() and ".fastq" in entry.suffixes):
             return True
 
 
+
+
+def _fastq_folder_iter(dir):
+    yield from (
+        entry for entry in dir.iterdir() if _use_folder(entry)
+    )
+    yield from (_ for _ in [dir] if _has_fastq(_))
+
+
 def _setup_pipeline():
-    bcfolder = dpg.get_value("bcfolder")
-    print(f"Working on files in {bcfolder}")
-
-    def folder_iter():
-        yield from (entry.path for entry in os.scandir(bcfolder)
-                    if _use_folder(entry))
-        yield from (_ for _ in [bcfolder] if _has_fastq(_))
-
     threads = dpg.get_value("threads")
     keep_intermediate = dpg.get_value("keep_intermediate")
     genome_size = dpg.get_value("genome_size")
@@ -95,7 +92,7 @@ def _setup_pipeline():
     if not keep_intermediate:
         steps.append(CleanFilterStep())
         steps.append(FinalCleanStep())
-    return steps, folder_iter()
+    return steps
 
 
 #################### Conda Setup ####################
