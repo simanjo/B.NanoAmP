@@ -101,8 +101,8 @@ def get_conda_version():
     conda_default_paths = [
         model.get_prefix("conda"),
         os.environ["PATH"],
-        Path.home() / "miniconda3" / "bin",
-        Path.home() / "anaconda3" / "bin",
+        str(Path.home() / "miniconda3" / "bin"),
+        str(Path.home() / "anaconda3" / "bin"),
         "/opt/anaconda3/bin",
         "/opt/miniconda3/bin"
     ]
@@ -114,7 +114,7 @@ def get_conda_version():
         conda_bin = subprocess.run(
             ["which", "conda"], capture_output=True, env=env
         ).stdout.decode()
-        model.PREFIXES['conda'] = Path(conda_bin).stem
+        model.PREFIXES['conda'] = Path(conda_bin).parent
         return conda_version
     except FileNotFoundError:
         return None
@@ -122,7 +122,7 @@ def get_conda_version():
 
 def set_conda_envs(envs, prefs):
     prefixes = {
-        pkg: pref / "bin" for pkg, (pref, _) in prefs.items()
+        pkg: pref + "/bin" for pkg, (pref, _) in prefs.items()
     } | {'conda': model.get_prefix('conda')}
     model.PREFIXES = prefixes
 
