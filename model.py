@@ -249,3 +249,39 @@ def _parse_models():
 
 def get_assemblers():
     return ["Flye", "Raven", "Miniasm"]
+
+
+def get_intermediate_folders(base):
+    return [
+        # duplex step
+        "original",
+        f"{base}_split",
+        # filter step
+        "filtered_reads",
+        # assemblers
+        f"{base}_miniasm_assembly",
+        f"{base}_flye_assembly",
+        f"{base}_raven_assembly",
+        # racon
+        "nanopore_mapping",
+        f"{base}_racon_polishing",
+    ]
+
+
+def get_intermediate_files(base):
+    return [
+        # duplex step
+        f"{base}.fastq.gz",
+        # filter step
+        f"filtered_reads/{base}_filtered.fastq.gz",
+        # miniasm
+        f"{base}_miniasm_assembly/{base}_overlap.paf.gz",
+        f"{base}_miniasm_assembly/{base}_unpolished_assembly.gfa",
+        f"{base}_miniasm_assembly/{base}_assembly.gfa",
+        f"{base}_miniasm_assembly/assembly.fasta",
+        # flye ??
+        # raven ??
+        # racon
+        "nanopore_mapping/mapping.sam",
+        f"{base}_racon_polishing/assembly.fasta",
+    ]
