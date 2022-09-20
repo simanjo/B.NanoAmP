@@ -63,7 +63,7 @@ def setup_fastq_data(get_fastq_test_data, request):
 @pytest.fixture
 def duplex_step(setup_fastq_data, request):
     yield DuplexStep(threads=8)
-    clean = request.node.get_closest_marker("clean")
+    clean = request.node.get_closest_marker("clean").args[0]
     if not clean:
         shutil.rmtree(setup_fastq_data / f"{setup_fastq_data.stem}_split")
     (setup_fastq_data / f"{setup_fastq_data.stem}.fastq.gz")
