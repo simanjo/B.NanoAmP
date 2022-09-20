@@ -4,6 +4,8 @@ import gzip
 import pytest
 import requests
 
+from PipelineSteps import CleanDuplexStep, DuplexStep
+
 
 @pytest.fixture(scope="session")
 def get_fastq_test_data(tmp_path_factory):
@@ -57,3 +59,21 @@ def setup_fastq_data(get_fastq_test_data, request):
         (data / "example3.fastq.gz").unlink()
         data.rmdir()
 
+
+@pytest.fixture
+def duplex_step(setup_fastq_data, request):
+    yield DuplexStep(threads=8)
+    clean = request.node.get_closest_marker("clean")
+    if not clean:
+        shutil.rmtree(setup_fastq_data / f"{setup_fastq_data.stem}_split")
+    (setup_fastq_data / f"{setup_fastq_data.stem}.fastq.gz")
+
+
+@pytest.fixture
+def duplex_clean():
+    yield CleanDuplexStep()
+
+
+@pytest.mark.clean(False)
+def test_duplex_step_output(duplex_step, setup_fastq_data):
+    duplex_step.run(setup_fastq_data)
