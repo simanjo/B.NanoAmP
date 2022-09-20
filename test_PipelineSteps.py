@@ -75,5 +75,14 @@ def duplex_clean():
 
 
 @pytest.mark.clean(False)
+@pytest.mark.needs_conda
+# @pytest.mark.skipif("setup_conda == False", reason="No valid conda setup found.")
 def test_duplex_step_output(duplex_step, setup_fastq_data):
     duplex_step.run(setup_fastq_data)
+
+
+@pytest.mark.clean(True)
+@pytest.mark.needs_conda
+def test_duplex_step_cleanup(duplex_step, duplex_clean, setup_fastq_data):
+    duplex_step.run(setup_fastq_data)
+    duplex_clean.run()
