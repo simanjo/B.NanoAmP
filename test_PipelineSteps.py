@@ -82,9 +82,42 @@ def duplex_clean():
 def test_duplex_step_output(duplex_step, setup_fastq_data):
     duplex_step.run(setup_fastq_data)
 
+    assert (setup_fastq_data / f"{setup_fastq_data.stem}.fastq.gz").is_file()
+
+    split_dir = setup_fastq_data / f"{setup_fastq_data.stem}_split"
+    assert split_dir.is_dir()
+    assert (split_dir / "unedited.pkl").is_file()
+    assert (split_dir / "edited.pkl").is_file()
+    assert (split_dir / "split_multiple_times.pkl").is_file()
+
+    orig_dir = setup_fastq_data / "original"
+    assert orig_dir.is_dir()
+    for entry in orig_dir.iterdir():
+        assert entry.is_file()
+        if ".gz" in entry.suffixes:
+            base = entry.with_suffix("").stem
+        else:
+            base = entry.stem
+        assert (split_dir / f"{base}_split.fastq.gz").is_file()
+
 
 @pytest.mark.clean(True)
 @pytest.mark.needs_conda
 def test_duplex_step_cleanup(duplex_step, duplex_clean, setup_fastq_data):
     duplex_step.run(setup_fastq_data)
-    duplex_clean.run()
+
+    split_dir = setup_fastq_data / f"{setup_fastq_data.stem}_split"
+    orig_dir = setup_fastq_data / "original"
+    assert split_dir.is_dir()
+    assert orig_dir.is_dir()
+    for entry in orig_dir.iterdir():
+        assert entry.is_file()
+        if ".gz" in entry.suffixes:
+            base = entry.with_suffix("").stem
+        else:
+            base = entry.stem
+        assert (split_dir / f"{base}_split.fastq.gz").is_file()
+
+    duplex_clean.run(setup_fastq_data)
+    assert not split_dir.is_dir()
+    assert (setup_fastq_data / f"{setup_fastq_data.stem}.fastq.gz").is_file()
