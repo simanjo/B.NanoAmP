@@ -31,3 +31,29 @@ def get_fastq_test_data(tmp_path_factory):
     yield fastq_data
     shutil.rmtree(fastq_data)
 
+
+@pytest.fixture(params=["single", "multiple", "mix"])
+def setup_fastq_data(get_fastq_test_data, request):
+    data = get_fastq_test_data.parent / "data"
+    data.mkdir()
+    if request.param == "single":
+        shutil.copy(get_fastq_test_data / "example1.fastq", data)
+    elif request.param == "multiple":
+        shutil.copy(get_fastq_test_data / "example1.fastq", data)
+        shutil.copy(get_fastq_test_data / "example2.fastq", data)
+    elif request.param == "mix":
+        shutil.copy(get_fastq_test_data / "example1.fastq", data)
+        shutil.copy(get_fastq_test_data / "example3.fastq.gz", data)
+    yield data
+    if request.param == "single":
+        (data / "example1.fastq").unlink()
+        data.rmdir()
+    elif request.param == "multiple":
+        (data / "example1.fastq").unlink()
+        (data / "example2.fastq").unlink()
+        data.rmdir()
+    elif request.param == "mix":
+        (data / "example1.fastq").unlink()
+        (data / "example3.fastq.gz").unlink()
+        data.rmdir()
+
