@@ -66,7 +66,10 @@ def duplex_step(setup_fastq_data, request):
     clean = request.node.get_closest_marker("clean").args[0]
     if not clean:
         shutil.rmtree(setup_fastq_data / f"{setup_fastq_data.stem}_split")
-    (setup_fastq_data / f"{setup_fastq_data.stem}.fastq.gz")
+    (setup_fastq_data / f"{setup_fastq_data.stem}.fastq.gz").unlink()
+    for entry in (setup_fastq_data / "original").iterdir():
+        shutil.move(entry, setup_fastq_data)
+    (setup_fastq_data / "original").rmdir()
 
 
 @pytest.fixture
@@ -76,7 +79,6 @@ def duplex_clean():
 
 @pytest.mark.clean(False)
 @pytest.mark.needs_conda
-# @pytest.mark.skipif("setup_conda == False", reason="No valid conda setup found.")
 def test_duplex_step_output(duplex_step, setup_fastq_data):
     duplex_step.run(setup_fastq_data)
 
