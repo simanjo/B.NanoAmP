@@ -5,6 +5,7 @@ import pytest
 import requests
 
 from PipelineSteps import CleanDuplexStep, DuplexStep
+from PipelineSteps import FilterStep, CleanFilterStep
 
 
 @pytest.fixture(scope="session")
@@ -77,6 +78,21 @@ def duplex_clean():
     yield CleanDuplexStep()
 
 
+@pytest.fixture(params=[(1_000, 4_200_000)])
+# TODO: clarify suitable parameters
+def filter_step(setup_fastq_data, request):
+    min_len, bases = request.param
+    yield FilterStep(min_len, bases)
+    clean = request.node.get_closest_marker("clean").args[0]
+    if not clean:
+        shutil.rmtree(setup_fastq_data / "filtered_reads")
+
+
+@pytest.fixture
+def filter_clean():
+    yield CleanFilterStep()
+
+
 @pytest.mark.clean(False)
 @pytest.mark.needs_conda
 def test_duplex_step_output(duplex_step, setup_fastq_data):
@@ -121,3 +137,30 @@ def test_duplex_step_cleanup(duplex_step, duplex_clean, setup_fastq_data):
     duplex_clean.run(setup_fastq_data)
     assert not split_dir.is_dir()
     assert (setup_fastq_data / f"{setup_fastq_data.stem}.fastq.gz").is_file()
+
+
+@pytest.mark.clean(False)
+@pytest.mark.needs_conda
+def test_filter_step_output(duplex_step, filter_step, setup_fastq_data):
+    duplex_step.run(setup_fastq_data)
+    filter_step.run(setup_fastq_data)
+
+    filter_dir = setup_fastq_data / "filtered_reads"
+    assert filter_dir.is_dir()
+    for entry in filter_dir.iterdir():
+        assert entry.name == f"{setup_fastq_data.stem}_filtered.fastq.gz"
+
+
+@pytest.mark.clean(True)
+@pytest.mark.needs_conda
+def test_filter_step_cleanup(
+    duplex_step, duplex_clean, filter_step, filter_clean, setup_fastq_data
+):
+    duplex_step.run(setup_fastq_data)
+    filter_step.run(setup_fastq_data)
+    duplex_clean.run(setup_fastq_data)
+
+    filter_dir = setup_fastq_data / "filtered_reads"
+    assert filter_dir.is_dir()
+    filter_clean.run(setup_fastq_data)
+    assert not filter_dir.is_dir()
