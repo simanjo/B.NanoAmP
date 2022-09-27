@@ -94,7 +94,7 @@ def filter_clean():
     yield CleanFilterStep()
 
 
-@pytest.fixture(params=["Miniasm", "Flye", "Raven"])
+@pytest.fixture
 def assembly_step(setup_fastq_data, request):
     yield AssemblyStep(threads=8, assembler=request.param)
     clean = request.node.get_closest_marker("clean").args[0]
@@ -188,62 +188,67 @@ def test_filter_step_cleanup(
 
 @pytest.mark.clean(False)
 @pytest.mark.needs_conda
+@pytest.mark.parametrize(
+    "assembly_step, medaka_step, assembler, racon",
+    [
+        (asm, (asm, rac), asm.lower(), rac)
+        for asm in ["Miniasm", "Flye", "Raven"]
+        for rac in [True, False]
+    ],
+    indirect=["assembly_step", "medaka_step"]
+)
 def test_assembly_step_output(
     duplex_step, filter_step, assembly_step,
-    racoon_step, medaka_step, setup_fastq_data
+    racon_step, medaka_step, setup_fastq_data,
+    assembler, racon
 ):
     # TODO: flye is not running, adapt test parameters accordingly
     duplex_step.run(setup_fastq_data)
     filter_step.run(setup_fastq_data)
     assembly_step.run(setup_fastq_data)
 
-    # one of three assemblers was executed, determinable by the folder name
-    assembler = None
-    for asm in ["miniasm", "flye", "raven"]:
-        asm_dir = setup_fastq_data / f"{setup_fastq_data.stem}_{asm}_assembly"
-        if asm_dir.is_dir():
-            assembler = asm
-            break
-    assert assembler is not None
+    asm_dir = f"{setup_fastq_data.stem}_{assembler}_assembly"
+    assert (setup_fastq_data / asm_dir).is_dir()
 
     files = []
-    if asm == "miniasm":
+    if assembler == "miniasm":
         files = [
             f"{setup_fastq_data.stem}_overlap.paf.gz",
             f"{setup_fastq_data.stem}_unpolished_assembly.gfa",
             f"{setup_fastq_data.stem}_assembly.gfa"
         ]
-    elif asm == "flye":
+    elif assembler == "flye":
         files = [
             "flye.log",
             "00-assembly",
             "params.json"
         ]
-    elif asm == "raven":
-        pass
-    else:
-        assert False
 
     files.append("assembly.fasta")
-    for entry in asm_dir.iterdir():
+    for entry in (setup_fastq_data / asm_dir).iterdir():
         assert entry.name in files
     # TODO: no assembly in test case for flye
-    assert (
-        ((asm_dir / "assembly.fasta").is_file() and asm != "flye")
-        or (not (asm_dir / "assembly.fasta").is_file() and asm == "flye")
-    )
-
-    racoon_step.run()
-    racon_dir = (setup_fastq_data / f"{setup_fastq_data.stem}_racon_polishing")
-    assert (setup_fastq_data / "nanopore_mapping").is_dir()
-    assert racon_dir.is_dir()
     if assembler == "flye":
-        assert (setup_fastq_data / "nanopore_mapping/mapping.sam").is_file()
-        assert (racon_dir / "assembly.fasta").is_file()
+        assert not (setup_fastq_data / asm_dir / "assembly.fasta").is_file()
+    else:
+        assert (setup_fastq_data / asm_dir / "assembly.fasta").is_file()
+
+    # the medaka step runs with racon flag, regardless
+    # of assembler choice. Racon is but only run with flye
+    if racon:
+        if assembler == "flye":
+            racon_step.run(setup_fastq_data)
+        else:
+            with pytest.raises(ValueError) as excinfo:
+                racon_step.run(setup_fastq_data)
+                fasta = f"{setup_fastq_data.stem}_flye_assembly/assembly.fasta"
+            assert fasta in str(excinfo.value)
+        racon_dir = f"{setup_fastq_data.stem}_racon_polishing"
+        map_dir = "nanopore_mapping"
+        assert (setup_fastq_data / map_dir).is_dir()
+        assert (setup_fastq_data / racon_dir).is_dir()
+        if assembler == "flye":
+            assert (setup_fastq_data / map_dir / "mapping.sam").is_file()
+            assert (setup_fastq_data / racon_dir / "assembly.fasta").is_file()
 
 
-    for entry in setup_fastq_data.iterdir():
-        print(entry.name)
-        if entry.is_dir():
-            for ent in entry.iterdir():
-                print(f"  {ent.name}")
