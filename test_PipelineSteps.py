@@ -7,7 +7,8 @@ import requests
 from PipelineSteps import DuplexStep, CleanDuplexStep
 from PipelineSteps import FilterStep, CleanFilterStep
 from PipelineSteps import AssemblyStep, CleanAssemblyStep
-from PipelineSteps import RaconPolishingStep
+from PipelineSteps import RaconPolishingStep, MedakaPolishingStep
+from PipelineSteps import FinalCleanStep
 
 @pytest.fixture(scope="session")
 def get_fastq_test_data(tmp_path_factory):
@@ -111,6 +112,20 @@ def racon_step(setup_fastq_data, request):
         shutil.rmtree(setup_fastq_data / "nanopore_mapping")
         racon_dir = f"{setup_fastq_data.stem}_racon_polishing"
         shutil.rmtree(setup_fastq_data / racon_dir)
+
+
+@pytest.fixture
+def medaka_step(setup_fastq_data, request):
+    yield MedakaPolishingStep(
+        threads=8, assembler=request.param[0],
+        model="r941_min_hac_g507", is_racon=request.param[1]
+    )
+    clean = request.node.get_closest_marker("clean").args[0]
+    if not clean:
+        pass
+        # shutil.rmtree(setup_fastq_data / "nanopore_mapping")
+        # racon_dir = f"{setup_fastq_data.stem}_racon_polishing"
+        # shutil.rmtree(setup_fastq_data / racon_dir)
 
 
 @pytest.mark.clean(False)
@@ -250,5 +265,7 @@ def test_assembly_step_output(
         if assembler == "flye":
             assert (setup_fastq_data / map_dir / "mapping.sam").is_file()
             assert (setup_fastq_data / racon_dir / "assembly.fasta").is_file()
+
+    medaka_step.run(setup_fastq_data)
 
 
