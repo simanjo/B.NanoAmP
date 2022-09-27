@@ -99,35 +99,35 @@ VARIANTS = {
     "hac": "hac",
     "sup": "sup",
 
-    "snp": "snp",
-    "fast_snp": "fast_snp",
-    "hac_snp": "snp",
-    "sup_snp": "sup_snp",
+    # "snp": "snp",
+    # "fast_snp": "fast_snp",
+    # "hac_snp": "snp",
+    # "sup_snp": "sup_snp",
 
-    "variant": "variant",
-    "fast_variant": "fast_variant",
-    "hac_variant": "hac_variant",
-    "sup_variant": "sup_variant",
+    # "variant": "variant",
+    # "fast_variant": "fast_variant",
+    # "hac_variant": "hac_variant",
+    # "sup_variant": "sup_variant",
 
     "e81_fast": "e81_fast",
     "e81_hac": "e81_hac",
     "e81_sup": "e81_sup",
 
-    "e81_fast_variant": "e81_fast_variant",
-    "e81_hac_variant": "e81_hac_variant",
-    "e81_sup_variant": "e81_sup_variant",
+    # "e81_fast_variant": "e81_fast_variant",
+    # "e81_hac_variant": "e81_hac_variant",
+    # "e81_sup_variant": "e81_sup_variant",
 
     "e82_400bps_fast": "e82_400bps_fast",
     "e82_400bps_hac": "e82_400bps_hac",
     "e82_400bps_sup": "e82_400bps_sup",
 
-    "e82_400bps_fast_variant": "e82_400bps_fast_variant",
-    "e82_400bps_hac_variant": "e82_400bps_hac_variant",
-    "e82_400bps_sup_variant": "e82_400bps_sup_variant",
+    # "e82_400bps_fast_variant": "e82_400bps_fast_variant",
+    # "e82_400bps_hac_variant": "e82_400bps_hac_variant",
+    # "e82_400bps_sup_variant": "e82_400bps_sup_variant",
 
     "high": "high",
-    "sup_plant": "sup_plant",
-    "sup_plant_variant": "sup_plant_variant",
+    # "sup_plant": "sup_plant",
+    # "sup_plant_variant": "sup_plant_variant",
 }
 
 
@@ -238,13 +238,24 @@ def _parse_models():
                else mod.split("_")[2:-1] if mod.split("_")[-1].startswith("g")
                else mod.split("_")[2:-2]
                ) for mod in models]
-    return pd.DataFrame({
+    df = pd.DataFrame({
         "full_model": models,
         "cell": cell,
         "device": device,
         "variant": variant,
         "guppy": guppy
     })
+
+    def filter_crit(variant):
+        if "snp" in variant:
+            return False
+        if "variant" in variant:
+            return False
+        if "plant" in variant:
+            return False
+        return True
+
+    return df[lambda df: [filter_crit(var) for var in df["variant"]]]
 
 
 def get_assemblers():
