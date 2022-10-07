@@ -1,6 +1,7 @@
 import os
 import sys
 import subprocess
+import logging
 from pathlib import Path
 from glob import glob
 
@@ -17,14 +18,27 @@ import model
 
 def execute_pipeline():
     dir = Path(dpg.get_value("bcfolder"))
-    print(f"Working in {dir}")
     if not _preflight_check(dir):
         return
-    steps = _setup_pipeline()
+    logger = _setup_logging(dir)
+    logger.info(f"Finished preflight check using {dir} as working directory.")
+    steps = _setup_pipeline(logger)
     for folder in _fastq_folder_iter(dir):
-        print(f"Executing in {folder}")
+        logger.info(f"  Executing choosen pipeline in {folder}")
         for step in steps:
             step.run(folder)
+
+
+def _setup_logging(dir):
+    if not (dir / "log").is_dir():
+        os.mkdir(dir / "log")
+    logger = logging.getLogger("PipelineLog")
+    fh = logging.FileHandler(dir / "log" / "Pipeline.log")
+    fh.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+    return logger
 
 
 def _preflight_check(dir):
@@ -141,7 +155,7 @@ def _fastq_folder_iter(dir):
         yield dir
 
 
-def _setup_pipeline():
+def _setup_pipeline(logger):
     threads = dpg.get_value("threads")
     keep_intermediate = dpg.get_value("keep_intermediate")
     genome_size = dpg.get_value("genome_size")
@@ -150,6 +164,13 @@ def _setup_pipeline():
     bases = int(genome_size * 1_000_000 * coverage)
     medaka_mod = dpg.get_value("medaka_manumodel")
     is_racon = not dpg.get_value("racon_skip")
+
+    asms = [asm for asm in model.get_assemblers() if dpg.get_value(f"use_{asm}")]
+    logger.info("Setting up pipeline with the following parameters:")
+    logger.info(f"  Threads: {threads}, Filtlong min-len: {min_len}")
+    logger.info(f"  Genome Size: {genome_size}, Coverage: {coverage}")
+    logger.info(f"  Assemblers: {asms}, Racon Polishing: {is_racon}")
+    logger.info(f"  Medaka Model: {medaka_mod}")
 
     steps = []
     steps.append(DuplexStep(threads))
