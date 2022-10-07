@@ -130,10 +130,7 @@ def medaka_step(setup_fastq_data, request):
     )
     clean = request.node.get_closest_marker("clean").args[0]
     if not clean:
-        pass
-        # shutil.rmtree(setup_fastq_data / "nanopore_mapping")
-        # racon_dir = f"{setup_fastq_data.stem}_racon_polishing"
-        # shutil.rmtree(setup_fastq_data / racon_dir)
+        shutil.rmtree(setup_fastq_data / "medaka_polished")
 
 
 @pytest.mark.clean(False)
@@ -268,5 +265,9 @@ def test_assembly_step_output(
         assert (setup_fastq_data / racon_dir / "assembly.fasta").is_file()
 
     medaka_step.run(setup_fastq_data)
+    assert (setup_fastq_data / "medaka_polished").is_dir()
+    for entry in (setup_fastq_data / "medaka_polished").iterdir():
+        # TODO: dir is emtpy, medaka is not running...
+        assert False
 
 
