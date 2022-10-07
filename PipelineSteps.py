@@ -261,7 +261,7 @@ class MedakaPolishingStep(PipelineStep):
         self.threads = threads
         self.assembler = assembler
         self.model = model
-        self.is_racon = is_racon and assembler == "Flye"
+        self.is_racon = (is_racon and assembler == "Flye")
         super().__init__()
 
     def run(self, wdir):
