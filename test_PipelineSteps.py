@@ -1,3 +1,4 @@
+import sys
 import shutil
 import tarfile
 import gzip
@@ -71,7 +72,12 @@ def duplex_step(setup_fastq_data, request):
         shutil.rmtree(setup_fastq_data / f"{setup_fastq_data.stem}_split")
     (setup_fastq_data / f"{setup_fastq_data.stem}.fastq.gz").unlink()
     for entry in (setup_fastq_data / "original").iterdir():
-        shutil.move(entry, setup_fastq_data)
+        # shutil needs str-like src directory until python 3.9
+        # https://bugs.python.org/issue32689
+        if sys.version_info < (3, 9):
+            shutil.move(str(entry), setup_fastq_data)
+        else:
+            shutil.move(entry, setup_fastq_data)
     (setup_fastq_data / "original").rmdir()
 
 
