@@ -115,9 +115,11 @@ def racon_step(setup_fastq_data, request):
     yield RaconPolishingStep(threads=8)
     clean = request.node.get_closest_marker("clean").args[0]
     if not clean:
-        shutil.rmtree(setup_fastq_data / "nanopore_mapping")
+        # racon step is built but not always used (if assembler unequals flye)
+        # so cleanup is not always required
+        shutil.rmtree(setup_fastq_data / "nanopore_mapping", ignore_errors=True)
         racon_dir = f"{setup_fastq_data.stem}_racon_polishing"
-        shutil.rmtree(setup_fastq_data / racon_dir)
+        shutil.rmtree(setup_fastq_data / racon_dir, ignore_errors=True)
 
 
 @pytest.fixture
@@ -256,21 +258,14 @@ def test_assembly_step_output(
 
     # the medaka step runs with racon flag, regardless
     # of assembler choice. Racon is but only run with flye
-    if racon:
-        if assembler == "flye":
-            racon_step.run(setup_fastq_data)
-        else:
-            with pytest.raises(ValueError) as excinfo:
-                racon_step.run(setup_fastq_data)
-                fasta = f"{setup_fastq_data.stem}_flye_assembly/assembly.fasta"
-            assert fasta in str(excinfo.value)
+    if racon and assembler == "flye":
+        racon_step.run(setup_fastq_data)
         racon_dir = f"{setup_fastq_data.stem}_racon_polishing"
         map_dir = "nanopore_mapping"
         assert (setup_fastq_data / map_dir).is_dir()
         assert (setup_fastq_data / racon_dir).is_dir()
-        if assembler == "flye":
-            assert (setup_fastq_data / map_dir / "mapping.sam").is_file()
-            assert (setup_fastq_data / racon_dir / "assembly.fasta").is_file()
+        assert (setup_fastq_data / map_dir / "mapping.sam").is_file()
+        assert (setup_fastq_data / racon_dir / "assembly.fasta").is_file()
 
     medaka_step.run(setup_fastq_data)
 
