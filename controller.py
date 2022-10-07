@@ -168,9 +168,14 @@ def get_conda_version():
 
 
 def set_conda_envs(envs, prefs):
+    # TODO: {} | {} to merge dicts is only introduced in python 3.9
+    # find better way to express
     prefixes = {
+        **{
         pkg: pref + "/bin" for pkg, (pref, _) in prefs.items()
-    } | {'conda': model.get_prefix('conda')}
+        },
+        **{'conda': model.get_prefix('conda')}
+    }
     model.PREFIXES = prefixes
 
 
