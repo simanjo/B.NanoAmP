@@ -137,7 +137,8 @@ def _fastq_folder_iter(dir):
     yield from (
         entry for entry in dir.iterdir() if _use_folder(entry)
     )
-    yield from (_ for _ in [dir] if _has_fastq(_))
+    if _has_fastq(dir):
+        yield dir
 
 
 def _setup_pipeline():
