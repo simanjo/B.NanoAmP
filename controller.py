@@ -67,20 +67,33 @@ def _calculate_coverage(dir):
             ["gunzip", "-fck"] + glob("*.fastq.gz"),
             cwd=dir, stdout=subprocess.PIPE
         )
-        awk_proc_1 = subprocess.Popen(
-            ["awk", "{if ((NR%=4)==2) print;}", "-"] + glob("*.fastq"),
-            cwd=dir, stdin=gzip_proc.stdout, stdout=subprocess.PIPE
-        )
+        if not glob("*.fastq.gz"):
+            awk_proc_1 = subprocess.Popen(
+                ["awk", "{if ((NR%=4)==2) print;}"] + glob("*.fastq"),
+                cwd=dir, stdout=subprocess.PIPE
+            )
+        else:
+            awk_proc_1 = subprocess.Popen(
+                ["awk", "{if ((NR%=4)==2) print;}", "-"] + glob("*.fastq"),
+                cwd=dir, stdin=gzip_proc.stdout, stdout=subprocess.PIPE
+            )
     else:
         gzip_proc = subprocess.Popen(
             ["gunzip", "-fck"] + glob("*.fastq.gz", root_dir=dir),
             cwd=dir, stdout=subprocess.PIPE
         )
-        awk_proc_1 = subprocess.Popen(
-            ["awk", "{if ((NR%=4)==2) print;}", "-"]
-            + glob("*.fastq", root_dir=dir),
-            cwd=dir, stdin=stdin, stdout=subprocess.PIPE
-        )
+        if not glob("*.fastq.gz"):
+            awk_proc_1 = subprocess.Popen(
+                ["awk", "{if ((NR%=4)==2) print;}"]
+                + glob("*.fastq", root_dir=dir),
+                cwd=dir, stdout=subprocess.PIPE
+            )
+        else:
+            awk_proc_1 = subprocess.Popen(
+                ["awk", "{if ((NR%=4)==2) print;}", "-"]
+                + glob("*.fastq", root_dir=dir),
+                cwd=dir, stdin=gzip_proc.stdout, stdout=subprocess.PIPE
+            )
     wc_proc = subprocess.Popen(
         ["wc"], stdin=awk_proc_1.stdout, stdout=subprocess.PIPE
     )
