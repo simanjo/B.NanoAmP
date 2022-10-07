@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 from pathlib import Path
 from glob import glob
@@ -59,15 +60,27 @@ def _has_fastq(folder):
 def _calculate_coverage(dir):
     # calculates coverage in the given directory via
     # awk '{if ((NR%=4)==2) print;}' *.fastq | wc | awk '{print $NF-$(NF-1);}'
-    gzip_proc = subprocess.Popen(
-        ["gunzip", "-fck"] + glob("*.fastq.gz", root_dir=dir),
-        cwd=dir, stdout=subprocess.PIPE
-    )
-    awk_proc_1 = subprocess.Popen(
-        ["awk", "{if ((NR%=4)==2) print;}", "-"]
-        + glob("*.fastq", root_dir=dir),
-        cwd=dir, stdin=gzip_proc.stdout, stdout=subprocess.PIPE
-    )
+    if sys.version_info < (3, 10):
+        cwd = os.getcwd()
+        os.chdir(dir)
+        gzip_proc = subprocess.Popen(
+            ["gunzip", "-fck"] + glob("*.fastq.gz"),
+            cwd=dir, stdout=subprocess.PIPE
+        )
+        awk_proc_1 = subprocess.Popen(
+            ["awk", "{if ((NR%=4)==2) print;}", "-"] + glob("*.fastq"),
+            cwd=dir, stdin=gzip_proc.stdout, stdout=subprocess.PIPE
+        )
+    else:
+        gzip_proc = subprocess.Popen(
+            ["gunzip", "-fck"] + glob("*.fastq.gz", root_dir=dir),
+            cwd=dir, stdout=subprocess.PIPE
+        )
+        awk_proc_1 = subprocess.Popen(
+            ["awk", "{if ((NR%=4)==2) print;}", "-"]
+            + glob("*.fastq", root_dir=dir),
+            cwd=dir, stdin=stdin, stdout=subprocess.PIPE
+        )
     wc_proc = subprocess.Popen(
         ["wc"], stdin=awk_proc_1.stdout, stdout=subprocess.PIPE
     )
@@ -75,26 +88,32 @@ def _calculate_coverage(dir):
         ["awk", "{print $NF-$(NF-1);}"], stdin=wc_proc.stdout,
         capture_output=True
     )
-    print(f"having coverage of {awk_proc_2.stdout.decode()[:-1]} in {dir}")
+    print(f"Having coverage of {awk_proc_2.stdout.decode()[:-1]} in {dir}")
     bases = int(awk_proc_2.stdout.decode())
     genome_size = dpg.get_value("genome_size") * 1_000_000
+    if sys.version_info < (3, 10):
+        os.chdir(cwd)
     return bases / genome_size
 
 
 def check_coverages(dir):
     if not dir.is_dir():
-        ErrorWindow(f"The given path {dir} is not a directory")
+        ErrorWindow(f"The given path {dir} is not a directory.")
         return None
     msg = []
     for folder in _fastq_folder_iter(dir):
-        print(f"Working in {folder}")
+        print(f"Calculating coverage in {folder}")
         cov = _calculate_coverage(folder)
+        if folder == dir:
+            folder_name = folder.relative_to(dir.parent)
+        else:
+            folder_name = folder.relative_to(dir)
         if cov < 30:
-            msg.append(f"Coverage in {folder.relative_to(dir)} is below 30x. ")
+            msg.append(f"Coverage in {folder_name} is below 30x. ")
             msg.append("Typing might be imprecise and ",)
             msg.append("further sequencing is recommended.\n")
         elif cov < 50:
-            msg.append(f"Coverage in {folder.relative_to(dir)} is below 50x. ")
+            msg.append(f"Coverage in {folder_name} is below 50x. ")
             msg.append("Racon polishing is recommended, ")
             msg.append("to potentially enhance typing.\n")
     if msg:
