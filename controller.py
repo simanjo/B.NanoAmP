@@ -20,11 +20,11 @@ def execute_pipeline():
     dir = Path(dpg.get_value("bcfolder"))
     if not _preflight_check(dir):
         return
-    logger = _setup_logging(dir)
-    logger.info(f"Finished preflight check using {dir} as working directory.")
-    steps = _setup_pipeline(logger)
+    _setup_logging(dir)
+    logging.info(f"Finished preflight check using {dir} as working directory.")
+    steps = _setup_pipeline()
     for folder in _fastq_folder_iter(dir):
-        logger.info(f"  Executing choosen pipeline in {folder}")
+        logging.info(f"  Executing choosen pipeline in {folder}")
         for step in steps:
             step.run(folder)
 
@@ -32,13 +32,11 @@ def execute_pipeline():
 def _setup_logging(dir):
     if not (dir / "log").is_dir():
         os.mkdir(dir / "log")
-    logger = logging.getLogger("PipelineLog")
-    fh = logging.FileHandler(dir / "log" / "Pipeline.log")
-    fh.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
-    return logger
+    logging.basicConfig(
+        filename=dir / "log" / "Pipeline.log",
+        format='%(asctime)s - %(levelname)s: %(message)s',
+        level=logging.INFO
+    )
 
 
 def _preflight_check(dir):
@@ -155,7 +153,7 @@ def _fastq_folder_iter(dir):
         yield dir
 
 
-def _setup_pipeline(logger):
+def _setup_pipeline():
     threads = dpg.get_value("threads")
     keep_intermediate = dpg.get_value("keep_intermediate")
     genome_size = dpg.get_value("genome_size")
@@ -166,11 +164,11 @@ def _setup_pipeline(logger):
     is_racon = not dpg.get_value("racon_skip")
 
     asms = [asm for asm in model.get_assemblers() if dpg.get_value(f"use_{asm}")]
-    logger.info("Setting up pipeline with the following parameters:")
-    logger.info(f"  Threads: {threads}, Filtlong min-len: {min_len}")
-    logger.info(f"  Genome Size: {genome_size}, Coverage: {coverage}")
-    logger.info(f"  Assemblers: {asms}, Racon Polishing: {is_racon}")
-    logger.info(f"  Medaka Model: {medaka_mod}")
+    logging.info("Setting up pipeline with the following parameters:")
+    logging.info(f"  Threads: {threads}, Filtlong min-len: {min_len}")
+    logging.info(f"  Genome Size: {genome_size}, Coverage: {coverage}")
+    logging.info(f"  Assemblers: {asms}, Racon Polishing: {is_racon}")
+    logging.info(f"  Medaka Model: {medaka_mod}")
 
     steps = []
     steps.append(DuplexStep(threads))
