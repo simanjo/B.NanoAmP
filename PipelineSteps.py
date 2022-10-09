@@ -1,9 +1,13 @@
 import gzip
+import logging
+from pathlib import Path
 import sys
 import os
 import shutil
 import subprocess
 from abc import ABC, abstractmethod
+import time
+from PipelineStepError import PipelineStepError
 
 import model
 
@@ -21,19 +25,30 @@ class DuplexStep(PipelineStep):
         self.threads = threads
 
     def run(self, wdir):
+        logger = logging.getLogger("")
+        logger.info("Started Duplex step.")
+
         duplex_call, env = _get_duplex_call(self.threads, wdir)
-        # print(f"running {duplex_call}")
         proc = subprocess.run(
             duplex_call, capture_output=True, env=env
         )
+        # HACK: get log dir by guessing that first encountered file handler
+        # contains the logfile (and always exists...) and dump output to it
+        log_dir = None
+        for h in logger.handlers:
+            if isinstance(h, logging.FileHandler):
+                log_dir = Path(h.baseFilename).parent
+                break
         if proc.returncode == 0:
-            print(proc.returncode)
-            print(proc.stdout.decode())
-            print(proc.stderr.decode())
+            with open(log_dir / "DuplexStep.log", "a") as fh:
+                fh.write(proc.stderr.decode())
+                fh.write("\n\n")
         else:
-            print(proc.returncode)
-            print(proc.stdout.decode())
-            print(proc.stderr.decode())
+            with open(log_dir / "DuplexStep.log", "a") as fh:
+                fh.write(proc.stderr.decode())
+                logger.error("Failed to execute duplex step given by")
+                logger.error(f"{duplex_call}")
+            raise PipelineStepError(self)
 
         orig_dir = wdir / "original"
         orig_dir.mkdir()
@@ -45,6 +60,7 @@ class DuplexStep(PipelineStep):
                     shutil.move(str(entry), orig_dir)
                 else:
                     shutil.move(entry, orig_dir)
+        logger.info("  Moved original files to subfolder")
 
         # copy everything
         outfile = wdir / f"{wdir.stem}.fastq.gz"
@@ -58,6 +74,8 @@ class DuplexStep(PipelineStep):
                     elif entry.suffix == ".fastq":
                         with open(entry, 'rb') as in_fh:
                             shutil.copyfileobj(in_fh, out_fh)
+        logger.info("  and sucessfully concatenated them.")
+        logger.info("Finished Duplex step.")
 
 
 class CleanDuplexStep(PipelineStep):
@@ -66,6 +84,7 @@ class CleanDuplexStep(PipelineStep):
 
     def run(self, wdir):
         shutil.rmtree(wdir / f"{wdir.stem}_split")
+        logging.info("Cleaned up Duplex step.")
 
 
 class FilterStep(PipelineStep):
@@ -75,13 +94,15 @@ class FilterStep(PipelineStep):
         self.target_bases = target_bases
 
     def run(self, wdir: str) -> None:
+        logger = logging.getLogger("")
+        logger.info("Started Filtlong step.")
+
         filtered_dir = wdir / "filtered_reads"
         filtered_dir.mkdir()
 
         filtlong_call, env = _get_filtlong_call(
             self.min_len, self.target_bases, wdir
         )
-        # print(f"running {filtlong_call}")
         proc = subprocess.Popen(
             filtlong_call, stdout=subprocess.PIPE, env=env
         )
@@ -90,6 +111,33 @@ class FilterStep(PipelineStep):
         with gzip.open(filtered_reads, 'wb') as out_fh:
             shutil.copyfileobj(proc.stdout, out_fh)
 
+        # HACK: call proc.poll to get returncode
+        while proc.poll() is None:
+            time.sleep(1)
+        # HACK: get log dir by guessing that first encountered file handler
+        # contains the logfile (and always exists...) and dump output to it
+        log_dir = None
+        for h in logger.handlers:
+            if isinstance(h, logging.FileHandler):
+                log_dir = Path(h.baseFilename).parent
+                break
+
+        if proc.returncode == 0:
+            # TODO: output gets dumped to console, how to capture that?
+            pass
+            # with open(log_dir / "FiltlongStep.log", "a") as fh:
+            #     fh.write(proc.stdout.decode())
+            #     fh.write("\n\n")
+        else:
+            with open(log_dir / "FiltlongStep.log", "a") as fh:
+                try:
+                    fh.write(proc.stderr.decode())
+                except AttributeError:
+                    pass
+                logger.error(f"Failed to execute Filtlong call given by")
+                logger.error(f"{filtlong_call}")
+            raise PipelineStepError(self)
+
 
 class CleanFilterStep(PipelineStep):
     def __init__(self) -> None:
@@ -97,6 +145,7 @@ class CleanFilterStep(PipelineStep):
 
     def run(self, wdir):
         shutil.rmtree(wdir / "filtered_reads")
+        logging.info("Cleaned up Filtlong step.")
 
 
 class AssemblyStep(PipelineStep):
