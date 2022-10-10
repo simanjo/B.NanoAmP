@@ -191,7 +191,7 @@ def _setup_pipeline():
     genome_size = dpg.get_value("genome_size")
     coverage = dpg.get_value("coverage")
     min_len = dpg.get_value("filtlong_minlen")
-    bases = int(genome_size * 1_000_000 * coverage)
+    bases = int(genome_size * 1_000) * 1_000 * coverage
     medaka_mod = dpg.get_value("medaka_manumodel")
     is_racon = not dpg.get_value("racon_skip")
 
