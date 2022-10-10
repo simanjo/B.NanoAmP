@@ -4,6 +4,7 @@ import subprocess
 import logging
 from pathlib import Path
 from glob import glob
+from PipelineStepError import PipelineStepError
 
 import dearpygui.dearpygui as dpg
 from packaging import version
@@ -22,12 +23,34 @@ def execute_pipeline():
         return
     _setup_logging(dir)
     dpg.configure_item("pipe_active_ind", show=True)
-    logging.info(f"Finished preflight check using {dir} as working directory.")
+    logger = logging.getLogger("")
+    logger.info(f"Finished preflight check using {dir} as working directory.")
     steps = _setup_pipeline()
     for folder in _fastq_folder_iter(dir):
-        logging.info(f"  Executing choosen pipeline in {folder}")
+        logger.info(f"  Executing choosen pipeline in {folder}")
         for step in steps:
-            step.run(folder)
+            try:
+                step.run(folder)
+            except PipelineStepError:
+                logger.error(f"Failed to execute pipeline in {folder}")
+                logger.info("Attempting to perform cleanup...")
+                # if step is clean step try to run it and fail silently
+                for step in steps:
+                    if isinstance(
+                        step,
+                        (
+                            CleanDuplexStep, CleanFilterStep,
+                            CleanAssemblyStep, FinalCleanStep
+                        )
+                    ):
+                        try:
+                            step.run(folder)
+                        except Exception as e:
+                            logger.exception(f"Failed cleanup in step {step}:")
+                            logger.exception(e)
+                            pass
+                # final break, no use in continuing pipeline
+                break
     dpg.configure_item("pipe_active_ind", show=False)
 
 class CustomUILogHandler(logging.Handler):
