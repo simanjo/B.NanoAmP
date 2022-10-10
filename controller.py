@@ -77,6 +77,25 @@ def _preflight_check(dir):
         msg += f"\nThe given folder '{dir}' does not exist."
         ErrorWindow(msg)
         return False
+    # check for valid parameters
+    for val, type in [
+        ("threads", int),
+        ("genome_size", float),
+        ("coverage", int),
+        ("filtlong_minlen", int),
+        ("medaka_manumodel", str)
+    ]:
+        if not isinstance(dpg.get_value(val), type):
+            dpg.add_text(
+                f"The parameter {val} is incorrectly specified.",
+                parent="log_area"
+            )
+            return False
+    if dpg.get_value("medaka_manumodel") == "--":
+        dpg.add_text(
+            "Please specify a valid medaka model.", parent="log_area"
+        )
+        return False
     return True
 
 
