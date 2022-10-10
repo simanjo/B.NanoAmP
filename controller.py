@@ -62,6 +62,7 @@ class CustomUILogHandler(logging.Handler):
     def emit(self, msg):
         msg=self.format(msg)
         dpg.add_text(msg, parent=self.parent_id)
+        dpg.set_y_scroll("log_window", -1.0)
 
     def flush(self):
         dpg.delete_item(self.parent_id, children_only=True)

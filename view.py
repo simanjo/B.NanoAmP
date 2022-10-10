@@ -261,8 +261,12 @@ def _add_medaka_settings():
 
 
 def _add_log_area():
-    child_id = dpg.add_child_window(autosize_y=True, autosize_x=True)
-    dpg.add_filter_set(parent=child_id, tag="log_area")
+    with dpg.child_window(autosize_y=True, autosize_x=True, tag="log_window"):
+        dpg.add_button(
+            label="Clear Log",
+            callback=lambda: dpg.delete_item("log_area", children_only=True)
+        )
+        dpg.add_filter_set(tag="log_area")
 
 
 #################### Callbacks ####################
