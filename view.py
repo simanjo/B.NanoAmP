@@ -29,10 +29,15 @@ def add_main_window():
                 _add_filtlong_settings()
                 _add_assembler_settings()
                 _add_medaka_settings()
-                dpg.add_button(
-                    label="Execute Assembly Pipeline",
-                    callback=controller.execute_pipeline
-                )
+                dpg.add_spacer(height=10)
+                with dpg.group(horizontal=True):
+                    with dpg.group():
+                        dpg.add_spacer(height=7)
+                        dpg.add_button(
+                            label="Execute Assembly Pipeline",
+                            callback=controller.execute_pipeline
+                        )
+                    dpg.add_loading_indicator(show=False, tag="pipe_active_ind")
 
 
 def check_conda():

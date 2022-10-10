@@ -21,12 +21,14 @@ def execute_pipeline():
     if not _preflight_check(dir):
         return
     _setup_logging(dir)
+    dpg.configure_item("pipe_active_ind", show=True)
     logging.info(f"Finished preflight check using {dir} as working directory.")
     steps = _setup_pipeline()
     for folder in _fastq_folder_iter(dir):
         logging.info(f"  Executing choosen pipeline in {folder}")
         for step in steps:
             step.run(folder)
+    dpg.configure_item("pipe_active_ind", show=False)
 
 
 def _setup_logging(dir):
