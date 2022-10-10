@@ -1,12 +1,45 @@
 import gzip
+import logging
+from pathlib import Path
 import sys
 import os
 import shutil
 import subprocess
 from abc import ABC, abstractmethod
+import time
+from PipelineStepError import PipelineStepError
 
 import model
 
+def _check_and_log_output(
+    logger, proc, log_name, current_call, step, poll=False
+):
+    if poll:
+        # HACK: call proc.poll to get returncode
+        while proc.poll() is None:
+            time.sleep(1)
+    # HACK: get log dir by guessing that first encountered file handler
+    # contains the logfile (and always exists...) and dump output to it
+    log_dir = None
+    for h in logger.handlers:
+        if isinstance(h, logging.FileHandler):
+            log_dir = Path(h.baseFilename).parent
+            break
+    if proc.returncode == 0:
+        with open(log_dir / log_name, "a") as fh:
+            if not poll and proc.stdout is not None:
+                fh.write(proc.stdout.decode())
+                fh.write("\n")
+            if proc.stderr is not None:
+                fh.write(proc.stderr.decode())
+                fh.write("\n")
+    else:
+        with open(log_dir / log_name, "a") as fh:
+            if proc.stderr is not None:
+                fh.write(proc.stderr.decode())
+        logger.error("Failed to execute current step given by")
+        logger.error(f"{current_call}")
+        raise PipelineStepError(step)
 
 class PipelineStep(ABC):
 
@@ -21,19 +54,16 @@ class DuplexStep(PipelineStep):
         self.threads = threads
 
     def run(self, wdir):
+        logger = logging.getLogger("")
+        logger.info("Started Duplex step.")
+
         duplex_call, env = _get_duplex_call(self.threads, wdir)
-        # print(f"running {duplex_call}")
         proc = subprocess.run(
             duplex_call, capture_output=True, env=env
         )
-        if proc.returncode == 0:
-            print(proc.returncode)
-            print(proc.stdout.decode())
-            print(proc.stderr.decode())
-        else:
-            print(proc.returncode)
-            print(proc.stdout.decode())
-            print(proc.stderr.decode())
+        _check_and_log_output(
+            logger, proc, "DuplexStep.log", duplex_call, self
+        )
 
         orig_dir = wdir / "original"
         orig_dir.mkdir()
@@ -45,6 +75,7 @@ class DuplexStep(PipelineStep):
                     shutil.move(str(entry), orig_dir)
                 else:
                     shutil.move(entry, orig_dir)
+        logger.info("  Moved original files to subfolder")
 
         # copy everything
         outfile = wdir / f"{wdir.stem}.fastq.gz"
@@ -58,6 +89,8 @@ class DuplexStep(PipelineStep):
                     elif entry.suffix == ".fastq":
                         with open(entry, 'rb') as in_fh:
                             shutil.copyfileobj(in_fh, out_fh)
+        logger.info("  and sucessfully concatenated them.")
+        logger.info("Finished Duplex step.")
 
 
 class CleanDuplexStep(PipelineStep):
@@ -66,6 +99,7 @@ class CleanDuplexStep(PipelineStep):
 
     def run(self, wdir):
         shutil.rmtree(wdir / f"{wdir.stem}_split")
+        logging.info("Cleaned up Duplex step.")
 
 
 class FilterStep(PipelineStep):
@@ -75,13 +109,15 @@ class FilterStep(PipelineStep):
         self.target_bases = target_bases
 
     def run(self, wdir: str) -> None:
+        logger = logging.getLogger("")
+        logger.info("Started Filtlong step.")
+
         filtered_dir = wdir / "filtered_reads"
         filtered_dir.mkdir()
 
         filtlong_call, env = _get_filtlong_call(
             self.min_len, self.target_bases, wdir
         )
-        # print(f"running {filtlong_call}")
         proc = subprocess.Popen(
             filtlong_call, stdout=subprocess.PIPE, env=env
         )
@@ -89,6 +125,10 @@ class FilterStep(PipelineStep):
 
         with gzip.open(filtered_reads, 'wb') as out_fh:
             shutil.copyfileobj(proc.stdout, out_fh)
+        # TODO: output gets dumped to console, how to capture that?
+        _check_and_log_output(
+            logger, proc, "FiltlongStep.log", filtlong_call, self, poll=True
+        )
 
 
 class CleanFilterStep(PipelineStep):
@@ -97,6 +137,7 @@ class CleanFilterStep(PipelineStep):
 
     def run(self, wdir):
         shutil.rmtree(wdir / "filtered_reads")
+        logging.info("Cleaned up Filtlong step.")
 
 
 class AssemblyStep(PipelineStep):
@@ -106,6 +147,8 @@ class AssemblyStep(PipelineStep):
         self.assembler = assembler
 
     def run(self, wdir: str) -> None:
+        logger = logging.getLogger("")
+        logger.info(f"Started Assembly step using {self.assembler}")
         if self.assembler == "Miniasm":
             asm_dir = wdir / f"{wdir.stem}_miniasm_assembly"
             asm_dir.mkdir()
@@ -119,6 +162,10 @@ class AssemblyStep(PipelineStep):
             read_overlap = asm_dir / f"{wdir.stem}_overlap.paf.gz"
             with gzip.open(read_overlap, 'wb') as out_fh:
                 shutil.copyfileobj(proc.stdout, out_fh)
+            _check_and_log_output(
+                logger, proc, "MiniasmStep.log", minimap_call, self, poll=True
+            )
+            logger.info("  Finished minimap execution.")
 
             assembler_call, env = _get_miniasm_call(
                 self.threads, wdir
@@ -129,6 +176,10 @@ class AssemblyStep(PipelineStep):
             asm_output = asm_dir / f"{wdir.stem}_unpolished_assembly.gfa"
             with open(asm_output, 'wb') as out_fh:
                 shutil.copyfileobj(proc.stdout, out_fh)
+            _check_and_log_output(
+                logger, proc, "MiniasmStep.log", assembler_call, self, True
+            )
+            logger.info("  Finished miniasm execution.")
 
             polish_call, env = _get_minipolish_call(
                 self.threads, wdir
@@ -139,6 +190,10 @@ class AssemblyStep(PipelineStep):
             polish_output = asm_dir / f"{wdir.stem}_assembly.gfa"
             with open(polish_output, 'wb') as out_fh:
                 shutil.copyfileobj(proc.stdout, out_fh)
+            _check_and_log_output(
+                logger, proc, "MiniasmStep.log", polish_call, self, poll=True
+            )
+            logger.info("  Finished minipolish execution.")
 
             ################# HACK
             # cf awk '/^S/{print ">"$2"\n"$3}' assmb.gfa | fold > assmb.fasta
@@ -153,6 +208,7 @@ class AssemblyStep(PipelineStep):
             with open(asm_output, 'wb') as out_fh:
                 shutil.copyfileobj(fasta_conv_fold.stdout, out_fh)
             ######################
+            logger.info("  Finished conversion to fasta format.")
 
         elif self.assembler == "Flye":
             assembler_call, env = _get_flye_call(
@@ -162,14 +218,10 @@ class AssemblyStep(PipelineStep):
             proc = subprocess.run(
                 assembler_call, capture_output=True, env=env
             )
-            if proc.returncode == 0:
-                print(proc.returncode)
-                print(proc.stdout.decode())
-                print(proc.stderr.decode())
-            else:
-                print(proc.returncode)
-                print(proc.stdout.decode())
-                print(proc.stderr.decode())
+            _check_and_log_output(
+                logger, proc, "FlyeStep.log", assembler_call, self
+            )
+            logging.info("  Finished Flye execution.")
 
         elif self.assembler == "Raven":
             asm_dir = wdir / f"{wdir.stem}_raven_assembly"
@@ -177,13 +229,16 @@ class AssemblyStep(PipelineStep):
             assembler_call, env = _get_raven_call(
                 self.threads, wdir
             )
-            # print(f"running {assembler_call}")
             proc = subprocess.Popen(
                 assembler_call, stdout=subprocess.PIPE, env=env
             )
             asm_output = asm_dir / "assembly.fasta"
             with open(asm_output, 'wb') as out_fh:
                 shutil.copyfileobj(proc.stdout, out_fh)
+            _check_and_log_output(
+                logger, proc, "RavenStep.log", assembler_call, self, poll=True
+            )
+            logging.info("  Finished Raven execution.")
 
         else:
             raise NotImplementedError(
@@ -221,6 +276,7 @@ class CleanAssemblyStep(PipelineStep):
                 shutil.move(str(wdir / fasta), asm_dir)
             else:
                 shutil.move(wdir / fasta, asm_dir)
+        logging.info(f"  Finished cleanup for {self.assembler} step.")
 
 
 class RaconPolishingStep(PipelineStep):
@@ -228,6 +284,8 @@ class RaconPolishingStep(PipelineStep):
         self.threads = threads
 
     def run(self, wdir):
+        logger = logging.getLogger("")
+        logger.info("Started racon polishing.")
         mapping_dir = wdir / "nanopore_mapping"
         mapping_dir.mkdir()
         polish_dir = wdir / f"{wdir.stem}_racon_polishing"
@@ -236,24 +294,30 @@ class RaconPolishingStep(PipelineStep):
         minimap_call, env = _get_minimap_mapping(
             self.threads, wdir
         )
-        # print(f"running {minimap_call}")
         proc = subprocess.Popen(
             minimap_call, stdout=subprocess.PIPE, env=env
         )
         mapping = mapping_dir / "mapping.sam"
         with open(mapping, 'wb') as out_fh:
             shutil.copyfileobj(proc.stdout, out_fh)
+        _check_and_log_output(
+            logger, proc, "RaconStep.log", minimap_call, self, poll=True
+        )
+        logging.info("  Finished minimap execution.")
 
         polishing_call, env = _get_racon_call(
             self.threads, wdir
         )
-        # print(f"running {polishing_call}")
         proc = subprocess.Popen(
             polishing_call, stdout=subprocess.PIPE, env=env
         )
         polish_out = polish_dir / "assembly.fasta"
         with open(polish_out, 'wb') as out_fh:
             shutil.copyfileobj(proc.stdout, out_fh)
+        _check_and_log_output(
+            logger, proc, "RaconStep.log", polishing_call, self, poll=True
+        )
+        logging.info("  Finished racon polishing.")
 
 
 class MedakaPolishingStep(PipelineStep):
@@ -265,40 +329,35 @@ class MedakaPolishingStep(PipelineStep):
         super().__init__()
 
     def run(self, wdir):
+        logger = logging.getLogger("")
+        logger.info("Started medaka polishing.")
         medaka_call, env = _get_medaka_call(
             self.threads, self.assembler,
             self.model, self.is_racon, wdir
         )
-        # print(f"running {medaka_call}")
         proc = subprocess.run(
             medaka_call, capture_output=True, env=env
         )
-        if proc.returncode == 0:
-            print(proc.returncode)
-            print(proc.stdout.decode())
-            print(proc.stderr.decode())
+        _check_and_log_output(
+            logger, proc, "MedakaStep.log", medaka_call, self
+        )
+        logger.info("  Finished medaka polishing.")
+        polish = "rm" if self.is_racon else "m"
+        fasta = f"{wdir.stem}_{self.assembler}_{polish}_coverage.fasta"
 
-            polish = "rm" if self.is_racon else "m"
-            fasta = f"{wdir.stem}_{self.assembler}_{polish}_coverage.fasta"
-
-            # shutil needs str-like src directory until python 3.9
-            # https://bugs.python.org/issue32689
-            if sys.version_info < (3, 9):
-                shutil.move(
-                    str(wdir / "medaka_polished" / "consensus.fasta"),
-                    wdir / fasta
-                )
-            else:
-                shutil.move(
-                    wdir / "medaka_polished" / "consensus.fasta",
-                    wdir / fasta
-                )
-
+        # shutil needs str-like src directory until python 3.9
+        # https://bugs.python.org/issue32689
+        if sys.version_info < (3, 9):
+            shutil.move(
+                str(wdir / "medaka_polished" / "consensus.fasta"),
+                wdir / fasta
+            )
         else:
-            print(proc.returncode)
-            print(proc.stdout.decode())
-            print(proc.stderr.decode())
-
+            shutil.move(
+                wdir / "medaka_polished" / "consensus.fasta",
+                wdir / fasta
+            )
+        logger.info("  Renamed assembly to reflect pipeline choices.")
 
 class FinalCleanStep(PipelineStep):
     def __init__(self) -> None:
@@ -315,6 +374,7 @@ class FinalCleanStep(PipelineStep):
             (wdir / "original").rmdir()
         except OSError:
             print("Couldn't delete copy of original files")
+        logging.info("Final cleanup done.")
 
 
 #################### Auxillary #####################

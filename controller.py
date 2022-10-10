@@ -1,8 +1,10 @@
 import os
 import sys
 import subprocess
+import logging
 from pathlib import Path
 from glob import glob
+from PipelineStepError import PipelineStepError
 
 import dearpygui.dearpygui as dpg
 from packaging import version
@@ -17,14 +19,69 @@ import model
 
 def execute_pipeline():
     dir = Path(dpg.get_value("bcfolder"))
-    print(f"Working in {dir}")
     if not _preflight_check(dir):
         return
+    _setup_logging(dir)
+    dpg.configure_item("pipe_active_ind", show=True)
+    logger = logging.getLogger("")
+    logger.info(f"Finished preflight check using {dir} as working directory.")
     steps = _setup_pipeline()
     for folder in _fastq_folder_iter(dir):
-        print(f"Executing in {folder}")
+        logger.info(f"  Executing choosen pipeline in {folder}")
         for step in steps:
-            step.run(folder)
+            try:
+                step.run(folder)
+            except PipelineStepError:
+                logger.error(f"Failed to execute pipeline in {folder}")
+                logger.info("Attempting to perform cleanup...")
+                # if step is clean step try to run it and fail silently
+                for step in steps:
+                    if isinstance(
+                        step,
+                        (
+                            CleanDuplexStep, CleanFilterStep,
+                            CleanAssemblyStep, FinalCleanStep
+                        )
+                    ):
+                        try:
+                            step.run(folder)
+                        except Exception as e:
+                            logger.exception(f"Failed cleanup in step {step}:")
+                            logger.exception(e)
+                            pass
+                # final break, no use in continuing pipeline
+                break
+    dpg.configure_item("pipe_active_ind", show=False)
+
+class CustomUILogHandler(logging.Handler):
+
+    def __init__(self, parent_id, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.parent_id = parent_id
+
+    def emit(self, msg):
+        msg=self.format(msg)
+        dpg.add_text(msg, parent=self.parent_id)
+        dpg.set_y_scroll("log_window", -1.0)
+
+    def flush(self):
+        dpg.delete_item(self.parent_id, children_only=True)
+
+
+def _setup_logging(dir):
+    if not (dir / "log").is_dir():
+        os.mkdir(dir / "log")
+
+    logging.basicConfig(
+        format='%(asctime)s - %(levelname)s: %(message)s',
+        level=logging.INFO,
+        handlers=[
+            logging.FileHandler(filename=dir / "log" / "Pipeline.log"),
+            CustomUILogHandler(
+                "log_area", level=logging.INFO
+            )
+        ]
+    )
 
 
 def _preflight_check(dir):
@@ -150,6 +207,13 @@ def _setup_pipeline():
     bases = int(genome_size * 1_000_000 * coverage)
     medaka_mod = dpg.get_value("medaka_manumodel")
     is_racon = not dpg.get_value("racon_skip")
+
+    asms = [asm for asm in model.get_assemblers() if dpg.get_value(f"use_{asm}")]
+    logging.info("Setting up pipeline with the following parameters:")
+    logging.info(f"  Threads: {threads}, Filtlong min-len: {min_len}")
+    logging.info(f"  Genome Size: {genome_size}, Coverage: {coverage}")
+    logging.info(f"  Assemblers: {asms}, Racon Polishing: {is_racon}")
+    logging.info(f"  Medaka Model: {medaka_mod}")
 
     steps = []
     steps.append(DuplexStep(threads))

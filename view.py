@@ -21,18 +21,23 @@ def add_main_window():
     with dpg.window(
         tag="main_window", autosize=True, no_close=True, no_collapse=True
     ):
-        with dpg.tab_bar(tag="tab_bar"):
-            with dpg.tab(
-                label="Assembly Settings", tag="main_tab", show=False
-            ):
-                _add_general_settings()
-                _add_filtlong_settings()
-                _add_assembler_settings()
-                _add_medaka_settings()
-                dpg.add_button(
-                    label="Execute Assembly Pipeline",
-                    callback=controller.execute_pipeline
-                )
+        with dpg.group(tag="main_group", show=False):
+            _add_general_settings()
+            _add_filtlong_settings()
+            _add_assembler_settings()
+            _add_medaka_settings()
+            dpg.add_spacer(height=10)
+            with dpg.group(horizontal=True):
+                with dpg.group():
+                    dpg.add_spacer(height=7)
+                    dpg.add_button(
+                        label="Execute Assembly Pipeline",
+                        callback=controller.execute_pipeline
+                    )
+                dpg.add_loading_indicator(show=False, tag="pipe_active_ind")
+            dpg.add_spacer(height=20)
+            _add_log_area()
+            dpg.add_text("Welcome to B.NanoAmP.\n", parent="log_area")
 
 
 def check_conda():
@@ -63,14 +68,10 @@ def check_conda():
 def check_env_setup(force=False):
     envs, prefs = controller.get_conda_setup()
     status, missing = controller.check_pkgs(envs)
-    dpg.configure_item("main_tab", show=True)
+    dpg.configure_item("main_group", show=True)
     if status == "complete" and not force:
         controller.set_conda_envs(envs, prefs)
         dpg.configure_item("medaka_manumodel", items=model.get_models())
-        with dpg.tab(
-            label="Conda Setup", tag="conda_tab", parent="tab_bar",
-        ):
-            _display_conda_setup(envs)
         return
     with dpg.window(
         modal=True, label="Checking Conda Setup", autosize=True,
@@ -257,6 +258,15 @@ def _add_medaka_settings():
             callback=_toggle_medaka_model
         )
     dpg.add_separator()
+
+
+def _add_log_area():
+    with dpg.child_window(autosize_y=True, autosize_x=True, tag="log_window"):
+        dpg.add_button(
+            label="Clear Log",
+            callback=lambda: dpg.delete_item("log_area", children_only=True)
+        )
+        dpg.add_filter_set(tag="log_area")
 
 
 #################### Callbacks ####################
