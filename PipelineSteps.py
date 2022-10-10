@@ -155,6 +155,7 @@ class AssemblyStep(PipelineStep):
         self.assembler = assembler
 
     def run(self, wdir: str) -> None:
+        logging.info(f"Started Assembly step using {self.assembler}")
         if self.assembler == "Miniasm":
             asm_dir = wdir / f"{wdir.stem}_miniasm_assembly"
             asm_dir.mkdir()
@@ -168,6 +169,7 @@ class AssemblyStep(PipelineStep):
             read_overlap = asm_dir / f"{wdir.stem}_overlap.paf.gz"
             with gzip.open(read_overlap, 'wb') as out_fh:
                 shutil.copyfileobj(proc.stdout, out_fh)
+            logging.info("  Finished minimap execution.")
 
             assembler_call, env = _get_miniasm_call(
                 self.threads, wdir
@@ -178,6 +180,7 @@ class AssemblyStep(PipelineStep):
             asm_output = asm_dir / f"{wdir.stem}_unpolished_assembly.gfa"
             with open(asm_output, 'wb') as out_fh:
                 shutil.copyfileobj(proc.stdout, out_fh)
+            logging.info("  Finished miniasm execution.")
 
             polish_call, env = _get_minipolish_call(
                 self.threads, wdir
@@ -188,6 +191,7 @@ class AssemblyStep(PipelineStep):
             polish_output = asm_dir / f"{wdir.stem}_assembly.gfa"
             with open(polish_output, 'wb') as out_fh:
                 shutil.copyfileobj(proc.stdout, out_fh)
+            logging.info("  Finished minipolish execution.")
 
             ################# HACK
             # cf awk '/^S/{print ">"$2"\n"$3}' assmb.gfa | fold > assmb.fasta
@@ -202,6 +206,7 @@ class AssemblyStep(PipelineStep):
             with open(asm_output, 'wb') as out_fh:
                 shutil.copyfileobj(fasta_conv_fold.stdout, out_fh)
             ######################
+            logging.info("  Finished conversion to fasta format.")
 
         elif self.assembler == "Flye":
             assembler_call, env = _get_flye_call(
@@ -219,6 +224,7 @@ class AssemblyStep(PipelineStep):
                 print(proc.returncode)
                 print(proc.stdout.decode())
                 print(proc.stderr.decode())
+            logging.info("  Finished Flye execution.")
 
         elif self.assembler == "Raven":
             asm_dir = wdir / f"{wdir.stem}_raven_assembly"
@@ -233,6 +239,7 @@ class AssemblyStep(PipelineStep):
             asm_output = asm_dir / "assembly.fasta"
             with open(asm_output, 'wb') as out_fh:
                 shutil.copyfileobj(proc.stdout, out_fh)
+            logging.info("  Finished Raven execution.")
 
         else:
             raise NotImplementedError(
@@ -270,6 +277,7 @@ class CleanAssemblyStep(PipelineStep):
                 shutil.move(str(wdir / fasta), asm_dir)
             else:
                 shutil.move(wdir / fasta, asm_dir)
+        logging.info(f"  Finished cleanup for {self.assembler} step.")
 
 
 class RaconPolishingStep(PipelineStep):
@@ -277,6 +285,7 @@ class RaconPolishingStep(PipelineStep):
         self.threads = threads
 
     def run(self, wdir):
+        logging.info("Started racon polishing.")
         mapping_dir = wdir / "nanopore_mapping"
         mapping_dir.mkdir()
         polish_dir = wdir / f"{wdir.stem}_racon_polishing"
@@ -285,13 +294,13 @@ class RaconPolishingStep(PipelineStep):
         minimap_call, env = _get_minimap_mapping(
             self.threads, wdir
         )
-        # print(f"running {minimap_call}")
         proc = subprocess.Popen(
             minimap_call, stdout=subprocess.PIPE, env=env
         )
         mapping = mapping_dir / "mapping.sam"
         with open(mapping, 'wb') as out_fh:
             shutil.copyfileobj(proc.stdout, out_fh)
+        logging.info("  Finished minimap execution.")
 
         polishing_call, env = _get_racon_call(
             self.threads, wdir
@@ -303,6 +312,7 @@ class RaconPolishingStep(PipelineStep):
         polish_out = polish_dir / "assembly.fasta"
         with open(polish_out, 'wb') as out_fh:
             shutil.copyfileobj(proc.stdout, out_fh)
+        logging.info("  Finished racon polishing.")
 
 
 class MedakaPolishingStep(PipelineStep):
@@ -314,6 +324,7 @@ class MedakaPolishingStep(PipelineStep):
         super().__init__()
 
     def run(self, wdir):
+        logging.info("Started medaka polishing.")
         medaka_call, env = _get_medaka_call(
             self.threads, self.assembler,
             self.model, self.is_racon, wdir
@@ -322,6 +333,7 @@ class MedakaPolishingStep(PipelineStep):
         proc = subprocess.run(
             medaka_call, capture_output=True, env=env
         )
+        logging.info("  Finished medaka polishing.")
         if proc.returncode == 0:
             print(proc.returncode)
             print(proc.stdout.decode())
@@ -364,6 +376,7 @@ class FinalCleanStep(PipelineStep):
             (wdir / "original").rmdir()
         except OSError:
             print("Couldn't delete copy of original files")
+        logging.info("Final cleanup done.")
 
 
 #################### Auxillary #####################
