@@ -4,16 +4,17 @@ import subprocess
 import logging
 from pathlib import Path
 from glob import glob
-from PipelineStepError import PipelineStepError
 
-import dearpygui.dearpygui as dpg
 from packaging import version
+from dearpygui import dearpygui as dpg
 
 from PipelineSteps import DuplexStep, FilterStep, AssemblyStep
 from PipelineSteps import RaconPolishingStep, MedakaPolishingStep
 from PipelineSteps import CleanDuplexStep, CleanFilterStep
 from PipelineSteps import CleanAssemblyStep, FinalCleanStep
 from ErrorWindow import ErrorWindow
+from PipelineStepError import PipelineStepError
+from CustomUILogHandler import CustomUILogHandler
 import model
 
 
@@ -52,20 +53,6 @@ def execute_pipeline():
                 # final break, no use in continuing pipeline
                 break
     dpg.configure_item("pipe_active_ind", show=False)
-
-class CustomUILogHandler(logging.Handler):
-
-    def __init__(self, parent_id, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.parent_id = parent_id
-
-    def emit(self, msg):
-        msg=self.format(msg)
-        dpg.add_text(msg, parent=self.parent_id)
-        dpg.set_y_scroll("log_window", -1.0)
-
-    def flush(self):
-        dpg.delete_item(self.parent_id, children_only=True)
 
 
 def _setup_logging(dir):
