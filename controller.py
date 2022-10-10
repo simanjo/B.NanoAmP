@@ -96,7 +96,15 @@ def _preflight_check(dir):
             "Please specify a valid medaka model.", parent="log_area"
         )
         return False
-    return True
+    # check if folder contains fastq files
+    # if generator is empty return False
+    for _ in _fastq_folder_iter(dir):
+        return True
+    dpg.add_text(
+        "Please specify a folder containing the fastq files.",
+        parent="log_area"
+    )
+    return False
 
 
 def _use_folder(folder):
