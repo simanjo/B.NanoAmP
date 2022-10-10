@@ -37,6 +37,7 @@ def add_main_window():
                 dpg.add_loading_indicator(show=False, tag="pipe_active_ind")
             dpg.add_spacer(height=20)
             _add_log_area()
+            dpg.add_text("Welcome to B.NanoAmP.\n", parent="log_area")
 
 
 def check_conda():
