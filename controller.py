@@ -30,14 +30,33 @@ def execute_pipeline():
             step.run(folder)
     dpg.configure_item("pipe_active_ind", show=False)
 
+class CustomUILogHandler(logging.Handler):
+
+    def __init__(self, parent_id, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.parent_id = parent_id
+
+    def emit(self, msg):
+        msg=self.format(msg)
+        dpg.add_text(msg, parent=self.parent_id)
+
+    def flush(self):
+        dpg.delete_item(self.parent_id, children_only=True)
+
 
 def _setup_logging(dir):
     if not (dir / "log").is_dir():
         os.mkdir(dir / "log")
+
     logging.basicConfig(
-        filename=dir / "log" / "Pipeline.log",
         format='%(asctime)s - %(levelname)s: %(message)s',
-        level=logging.INFO
+        level=logging.INFO,
+        handlers=[
+            logging.FileHandler(filename=dir / "log" / "Pipeline.log"),
+            CustomUILogHandler(
+                "log_area", level=logging.INFO
+            )
+        ]
     )
 
 

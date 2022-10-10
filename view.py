@@ -38,6 +38,8 @@ def add_main_window():
                             callback=controller.execute_pipeline
                         )
                     dpg.add_loading_indicator(show=False, tag="pipe_active_ind")
+                dpg.add_spacer(height=20)
+                _add_log_area()
 
 
 def check_conda():
@@ -262,6 +264,11 @@ def _add_medaka_settings():
             callback=_toggle_medaka_model
         )
     dpg.add_separator()
+
+
+def _add_log_area():
+    child_id = dpg.add_child_window(autosize_y=True, autosize_x=True)
+    dpg.add_filter_set(parent=child_id, tag="log_area")
 
 
 #################### Callbacks ####################
