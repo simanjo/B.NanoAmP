@@ -211,6 +211,7 @@ def get_models():
 def get_medaka_standard_model():
     return "r941_min_hac_g507"
 
+
 def get_model_df():
     global MODELS
     if MODELS is None:
