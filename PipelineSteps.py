@@ -11,6 +11,7 @@ from PipelineStepError import PipelineStepError
 
 import model
 
+
 def _check_and_log_output(
     logger, proc, log_name, current_call, step, poll=False
 ):
@@ -40,6 +41,7 @@ def _check_and_log_output(
         logger.error("Failed to execute current step given by")
         logger.error(f"{current_call}")
         raise PipelineStepError(step)
+
 
 class PipelineStep(ABC):
 
@@ -358,6 +360,7 @@ class MedakaPolishingStep(PipelineStep):
                 wdir / fasta
             )
         logger.info("  Renamed assembly to reflect pipeline choices.")
+
 
 class FinalCleanStep(PipelineStep):
     def __init__(self) -> None:
