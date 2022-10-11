@@ -25,7 +25,7 @@ So generally it is supposed to run under WSL2 but be aware that there might be d
 
 ## Linux
 
-download the latest stable version [v1.0.0](https://github.com/simanjo/B.NanoAmP/archive/refs/tags/v1.0.0.tar.gz)
+download the latest stable version [v1.0.0](https://github.com/simanjo/B.NanoAmP/archive/refs/tags/v1.1.0.tar.gz)
 
 ### Python
 
