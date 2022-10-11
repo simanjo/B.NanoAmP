@@ -7,9 +7,9 @@ import requests
 
 from PipelineSteps import DuplexStep, CleanDuplexStep
 from PipelineSteps import FilterStep, CleanFilterStep
-from PipelineSteps import AssemblyStep, CleanAssemblyStep
+from PipelineSteps import AssemblyStep
 from PipelineSteps import RaconPolishingStep, MedakaPolishingStep
-from PipelineSteps import FinalCleanStep
+
 
 @pytest.fixture(scope="session")
 def get_fastq_test_data(tmp_path_factory):
@@ -84,6 +84,55 @@ def duplex_step(setup_fastq_data, request):
 @pytest.fixture
 def duplex_clean():
     yield CleanDuplexStep()
+
+
+@pytest.fixture(params=[(1_000, 4_200_000)])
+# TODO: clarify suitable parameters
+def filter_step(setup_fastq_data, request):
+    min_len, bases = request.param
+    yield FilterStep(min_len, bases)
+    clean = request.node.get_closest_marker("clean").args[0]
+    if not clean:
+        shutil.rmtree(setup_fastq_data / "filtered_reads")
+
+
+@pytest.fixture
+def filter_clean():
+    yield CleanFilterStep()
+
+
+@pytest.fixture
+def assembly_step(setup_fastq_data, request):
+    yield AssemblyStep(threads=8, assembler=request.param)
+    clean = request.node.get_closest_marker("clean").args[0]
+    if not clean:
+        asm_dir = f"{setup_fastq_data.stem}_{request.param.lower()}_assembly"
+        shutil.rmtree(setup_fastq_data / asm_dir)
+
+
+@pytest.fixture
+def racon_step(setup_fastq_data, request):
+    yield RaconPolishingStep(threads=8)
+    clean = request.node.get_closest_marker("clean").args[0]
+    if not clean:
+        # racon step is built but not always used (if assembler unequals flye)
+        # so cleanup is not always required
+        shutil.rmtree(
+            setup_fastq_data / "nanopore_mapping", ignore_errors=True
+        )
+        racon_dir = f"{setup_fastq_data.stem}_racon_polishing"
+        shutil.rmtree(setup_fastq_data / racon_dir, ignore_errors=True)
+
+
+@pytest.fixture
+def medaka_step(setup_fastq_data, request):
+    yield MedakaPolishingStep(
+        threads=8, assembler=request.param[0],
+        model="r941_min_hac_g507", is_racon=request.param[1]
+    )
+    clean = request.node.get_closest_marker("clean").args[0]
+    if not clean:
+        shutil.rmtree(setup_fastq_data / "medaka_polished")
 
 
 @pytest.fixture(params=[(1_000, 4_200_000)])
@@ -269,5 +318,3 @@ def test_assembly_step_output(
     for entry in (setup_fastq_data / "medaka_polished").iterdir():
         # TODO: dir is emtpy, medaka is not running...
         assert False
-
-

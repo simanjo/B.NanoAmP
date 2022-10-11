@@ -1,30 +1,75 @@
 from bisect import bisect_right
 import os
+import sys
 import subprocess
+import logging
 from pathlib import Path
 from glob import glob
 
-import dearpygui.dearpygui as dpg
 from packaging import version
+from dearpygui import dearpygui as dpg
 
 from PipelineSteps import DuplexStep, FilterStep, AssemblyStep
 from PipelineSteps import RaconPolishingStep, MedakaPolishingStep
 from PipelineSteps import CleanDuplexStep, CleanFilterStep
 from PipelineSteps import CleanAssemblyStep, FinalCleanStep
 from ErrorWindow import ErrorWindow
+from PipelineStepError import PipelineStepError
+from CustomUILogHandler import CustomUILogHandler
 import model
 
 
 def execute_pipeline():
     dir = Path(dpg.get_value("bcfolder"))
-    print(f"Working in {dir}")
     if not _preflight_check(dir):
         return
+    _setup_logging(dir)
+    dpg.configure_item("pipe_active_ind", show=True)
+    logger = logging.getLogger("")
+    logger.info(f"Finished preflight check using {dir} as working directory.")
     steps = _setup_pipeline()
     for folder in _fastq_folder_iter(dir):
-        print(f"Executing in {folder}")
+        logger.info(f"  Executing choosen pipeline in {folder}")
         for step in steps:
-            step.run(folder)
+            try:
+                step.run(folder)
+            except PipelineStepError:
+                logger.error(f"Failed to execute pipeline in {folder}")
+                logger.info("Attempting to perform cleanup...")
+                # if step is clean step try to run it and fail silently
+                for step in steps:
+                    if isinstance(
+                        step,
+                        (
+                            CleanDuplexStep, CleanFilterStep,
+                            CleanAssemblyStep, FinalCleanStep
+                        )
+                    ):
+                        try:
+                            step.run(folder)
+                        except Exception as e:
+                            logger.exception(f"Failed cleanup in step {step}:")
+                            logger.exception(e)
+                            pass
+                # final break, no use in continuing pipeline
+                break
+    dpg.configure_item("pipe_active_ind", show=False)
+
+
+def _setup_logging(dir):
+    if not (dir / "log").is_dir():
+        os.mkdir(dir / "log")
+
+    logging.basicConfig(
+        format='%(asctime)s - %(levelname)s: %(message)s',
+        level=logging.INFO,
+        handlers=[
+            logging.FileHandler(filename=dir / "log" / "Pipeline.log"),
+            CustomUILogHandler(
+                "log_area", level=logging.INFO
+            )
+        ]
+    )
 
 
 def _preflight_check(dir):
@@ -33,7 +78,34 @@ def _preflight_check(dir):
         msg += f"\nThe given folder '{dir}' does not exist."
         ErrorWindow(msg)
         return False
-    return True
+    # check for valid parameters
+    for val, type in [
+        ("threads", int),
+        ("genome_size", float),
+        ("coverage", int),
+        ("filtlong_minlen", int),
+        ("medaka_manumodel", str)
+    ]:
+        if not isinstance(dpg.get_value(val), type):
+            dpg.add_text(
+                f"The parameter {val} is incorrectly specified.",
+                parent="log_area"
+            )
+            return False
+    if dpg.get_value("medaka_manumodel") == "--":
+        dpg.add_text(
+            "Please specify a valid medaka model.", parent="log_area"
+        )
+        return False
+    # check if folder contains fastq files
+    # if generator is empty return False
+    for _ in _fastq_folder_iter(dir):
+        return True
+    dpg.add_text(
+        "Please specify a folder containing the fastq files.",
+        parent="log_area"
+    )
+    return False
 
 
 def _use_folder(folder):
@@ -60,15 +132,40 @@ def _has_fastq(folder):
 def _calculate_coverage(dir):
     # calculates coverage in the given directory via
     # awk '{if ((NR%=4)==2) print;}' *.fastq | wc | awk '{print $NF-$(NF-1);}'
-    gzip_proc = subprocess.Popen(
-        ["gunzip", "-fck"] + glob("*.fastq.gz", root_dir=dir),
-        cwd=dir, stdout=subprocess.PIPE
-    )
-    awk_proc_1 = subprocess.Popen(
-        ["awk", "{if ((NR%=4)==2) print;}", "-"]
-        + glob("*.fastq", root_dir=dir),
-        cwd=dir, stdin=gzip_proc.stdout, stdout=subprocess.PIPE
-    )
+    if sys.version_info < (3, 10):
+        cwd = os.getcwd()
+        os.chdir(dir)
+        gzip_proc = subprocess.Popen(
+            ["gunzip", "-fck"] + glob("*.fastq.gz"),
+            cwd=dir, stdout=subprocess.PIPE
+        )
+        if not glob("*.fastq.gz"):
+            awk_proc_1 = subprocess.Popen(
+                ["awk", "{if ((NR%=4)==2) print;}"] + glob("*.fastq"),
+                cwd=dir, stdout=subprocess.PIPE
+            )
+        else:
+            awk_proc_1 = subprocess.Popen(
+                ["awk", "{if ((NR%=4)==2) print;}", "-"] + glob("*.fastq"),
+                cwd=dir, stdin=gzip_proc.stdout, stdout=subprocess.PIPE
+            )
+    else:
+        gzip_proc = subprocess.Popen(
+            ["gunzip", "-fck"] + glob("*.fastq.gz", root_dir=dir),
+            cwd=dir, stdout=subprocess.PIPE
+        )
+        if not glob("*.fastq.gz"):
+            awk_proc_1 = subprocess.Popen(
+                ["awk", "{if ((NR%=4)==2) print;}"]
+                + glob("*.fastq", root_dir=dir),
+                cwd=dir, stdout=subprocess.PIPE
+            )
+        else:
+            awk_proc_1 = subprocess.Popen(
+                ["awk", "{if ((NR%=4)==2) print;}", "-"]
+                + glob("*.fastq", root_dir=dir),
+                cwd=dir, stdin=gzip_proc.stdout, stdout=subprocess.PIPE
+            )
     wc_proc = subprocess.Popen(
         ["wc"], stdin=awk_proc_1.stdout, stdout=subprocess.PIPE
     )
@@ -76,26 +173,32 @@ def _calculate_coverage(dir):
         ["awk", "{print $NF-$(NF-1);}"], stdin=wc_proc.stdout,
         capture_output=True
     )
-    print(f"having coverage of {awk_proc_2.stdout.decode()[:-1]} in {dir}")
+    print(f"Having coverage of {awk_proc_2.stdout.decode()[:-1]} in {dir}")
     bases = int(awk_proc_2.stdout.decode())
     genome_size = dpg.get_value("genome_size") * 1_000_000
+    if sys.version_info < (3, 10):
+        os.chdir(cwd)
     return bases / genome_size
 
 
 def check_coverages(dir):
     if not dir.is_dir():
-        ErrorWindow(f"The given path {dir} is not a directory")
+        ErrorWindow(f"The given path {dir} is not a directory.")
         return None
     msg = []
     for folder in _fastq_folder_iter(dir):
-        print(f"Working in {folder}")
+        print(f"Calculating coverage in {folder}")
         cov = _calculate_coverage(folder)
+        if folder == dir:
+            folder_name = folder.relative_to(dir.parent)
+        else:
+            folder_name = folder.relative_to(dir)
         if cov < 30:
-            msg.append(f"Coverage in {folder.relative_to(dir)} is below 30x. ")
+            msg.append(f"Coverage in {folder_name} is below 30x. ")
             msg.append("Typing might be imprecise and ",)
             msg.append("further sequencing is recommended.\n")
         elif cov < 50:
-            msg.append(f"Coverage in {folder.relative_to(dir)} is below 50x. ")
+            msg.append(f"Coverage in {folder_name} is below 50x. ")
             msg.append("Racon polishing is recommended, ")
             msg.append("to potentially enhance typing.\n")
     if msg:
@@ -106,7 +209,8 @@ def _fastq_folder_iter(dir):
     yield from (
         entry for entry in dir.iterdir() if _use_folder(entry)
     )
-    yield from (_ for _ in [dir] if _has_fastq(_))
+    if _has_fastq(dir):
+        yield dir
 
 
 def _setup_pipeline():
@@ -115,9 +219,16 @@ def _setup_pipeline():
     genome_size = dpg.get_value("genome_size")
     coverage = dpg.get_value("coverage")
     min_len = dpg.get_value("filtlong_minlen")
-    bases = int(genome_size * 1_000_000 * coverage)
+    bases = int(genome_size * 1_000) * 1_000 * coverage
     medaka_mod = dpg.get_value("medaka_manumodel")
     is_racon = not dpg.get_value("racon_skip")
+
+    asms = [asm for asm in model.get_assemblers() if dpg.get_value(f"use_{asm}")]
+    logging.info("Setting up pipeline with the following parameters:")
+    logging.info(f"  Threads: {threads}, Filtlong min-len: {min_len}")
+    logging.info(f"  Genome Size: {genome_size}, Coverage: {coverage}")
+    logging.info(f"  Assemblers: {asms}, Racon Polishing: {is_racon}")
+    logging.info(f"  Medaka Model: {medaka_mod}")
 
     steps = []
     steps.append(DuplexStep(threads))
