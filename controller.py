@@ -1,3 +1,4 @@
+from bisect import bisect_right
 import os
 import subprocess
 from pathlib import Path
@@ -280,23 +281,48 @@ def _get_conda_packages(env):
 ################## model selection
 
 
-def filter_models(device=None, cell=None, guppy=None, variant=None):
+def _get_closest_guppy_ver(guppy_version, versions):
+    vers = sorted(versions, key=version.parse)
+    pos = bisect_right(
+        vers,
+        version.parse(guppy_version),
+        key=version.parse
+    )
+    return vers[max(0, pos - 1)]
+
+
+def get_closest_model(cell, device, guppy, variant):
     all_models = model.get_model_df()
-    query = ""
-    if device is not None:
-        query += f"device == '{device}'"
-    if cell is not None:
-        if query != "":
-            query += " & "
-        query += f"cell == '{cell}'"
-    if guppy is not None:
-        if query != "":
-            query += " & "
-        query += f"guppy == '{guppy}'"
-    if variant is not None:
-        if query != "":
-            query += " & "
-        query += f"variant == '{variant}'"
-    if query == "":
-        return all_models
-    return all_models.query(query)
+
+    # check for cell, device and variant
+    query = f"cell == '{cell}' & device == '{device}' & variant == '{variant}'"
+    filtered = all_models.query(query)
+    if len(filtered.guppy) == 1:
+        return filtered.full_model.iloc[0]
+    if not filtered.empty:
+        guppy_ver = _get_closest_guppy_ver(guppy, filtered.guppy)
+        query += f" & guppy == '{guppy_ver}'"
+        return all_models.query(query).full_model.iloc[0]
+
+    # check for cell, variant and empty device
+    if not device == "":
+        query = f"cell == '{cell}' & variant == '{variant}' & device == ''"
+        filtered = all_models.query(query)
+        if len(filtered.guppy) == 1:
+            return filtered.full_model.iloc[0]
+        if not filtered.empty:
+            guppy_ver = _get_closest_guppy_ver(guppy, filtered.guppy)
+            query += f" & guppy == '{guppy_ver}'"
+            return all_models.query(query).full_model.iloc[0]
+
+    # check for cell and variant
+    query = f"cell == '{cell}' & variant == '{variant}'"
+    filtered = all_models.query(query)
+    if len(filtered.guppy) == 1:
+        return filtered.full_model.iloc[0]
+    if not filtered.empty:
+        guppy_ver = _get_closest_guppy_ver(guppy, filtered.guppy)
+        query += f" & guppy == '{guppy_ver}'"
+        return all_models.query(query).full_model.iloc[0]
+
+    return None
