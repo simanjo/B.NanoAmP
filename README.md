@@ -66,3 +66,34 @@ The standard ubuntu distribution should already contain the most relevant packag
 The remaining installation follows the instructions for Linux above.
 
 In case of problems or unexptected behaviour with WSL feel free to open an issue.
+
+# Usage
+
+## Conda Environment Setup
+On startup, B.NanoAmP tries to detect a conda version (see the above instructions for conda installation for details.) and if none is found, the following message is displayed, where you can manually select a path to a conda binary.
+![Initial view, when no conda installation was detected](https://user-images.githubusercontent.com/82642377/195156035-f99a9fb9-08ca-489f-9ab8-a38216dd449c.png)
+
+If conda was detected, B.NanoAmP uses that conda binary to check for environments on your computer, trying to find all the required pipeline tools. If some or all of them are missing, the below message is displayed, providing the opportunity to have the tools installed in separate conda environments. Note that this might take some time.
+
+![View, when the required pipeline tools are not detected](https://user-images.githubusercontent.com/82642377/195156506-560ce1bb-2ea4-451a-85e9-24767e150441.png)
+
+## Overview of the GUI elements
+
+If you have the necessary conda setup, B.NanoAmP basically consists only of the following view (plus some additional message popups). The whole pipeline setup and execution is done here.
+
+![Overview of the GUI elements](https://user-images.githubusercontent.com/82642377/195156695-3a07d1f4-f936-434c-baaa-1c6fe39be4b9.png)
+
+1. First you need to select the directory, containing the fastq files to assemble. If there are multiple subdirectories containing fastq files, each of the directories is treated as seperate assembly task (think e.g. of different barcodes). Compressed files (tar.gz or .gz) can also be used as input files, and evene a mixture of compressed and uncompressed files can be handled (though it is not advisable to do so).
+2. Then you can set some basic configuration items, with the following effect:
+   * skip assembly in unclassified folder: skips any folder named "unclassified", which is a commonly found folder resulting from guppy basecalling and usually contains reads that can not be attributed to a barcode
+   * keep intermediate results: if checked, the outputs of each of the pipeline steps are kept and not deleted (which is the default setting to keep your directory clean)
+   * Threads: determines the amount of threads to use in those tools that allow for such a setting
+   * Genome Size: specifies the expected size of your Genome in Megabases
+   * Coverage: specifies the desired coverage
+   * min_len: setting for filtlong, determining the minimal length of reads to keep
+3. Then you can select the assemblers to use, where racon polishing can be included optionally in case of using Flye. More than one assembler can be selected, resulting on several assembly tasks performed one after the other.
+4. Finally you have to select the medaka model to use (for mandatory medaka polishing after the assembly). You can either select the relevant parameters and an appropriate model is guessed fitting best, or you can select the model manually from a list of available models.
+5. After all the choices are made, you can start the execution of the pipeline, with some additional information about the pipeline progress being displayed in the box below.
+   
+
+
