@@ -223,7 +223,7 @@ def _setup_pipeline():
     medaka_mod = dpg.get_value("medaka_manumodel")
     is_racon = not dpg.get_value("racon_skip")
 
-    asms = [asm for asm in model.get_assemblers() if dpg.get_value(f"use_{asm}")]
+    asms = [i for i in model.get_assemblers() if dpg.get_value(f"use_{i}")]
     logging.info("Setting up pipeline with the following parameters:")
     logging.info(f"  Threads: {threads}, Filtlong min-len: {min_len}")
     logging.info(f"  Genome Size: {genome_size}, Coverage: {coverage}")
