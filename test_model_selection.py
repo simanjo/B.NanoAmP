@@ -8,39 +8,39 @@ from controller import _get_closest_guppy_ver, get_closest_model
     [
         # last in list
         (
-            "Guppy 3.5.1",
-            ["Guppy 3.0.3", "Guppy 3.2.2", "Guppy 3.5.1"],
-            "Guppy 3.5.1"
+            "g351",
+            ["g303", "g322", "g351"],
+            "g351"
         ),
         # first in list
         (
-            "Guppy 3.5.1",
-            ["Guppy 3.5.1", "Guppy 4.0.11", "Guppy 5.0.7", "Guppy 5.0.15"],
-            "Guppy 3.5.1"
+            "g351",
+            ["g351", "g4011", "g507", "g5015"],
+            "g351"
         ),
         # in list
         (
-            "Guppy 5.0.7",
-            ["Guppy 3.6.0", "Guppy 4.0.11", "Guppy 5.0.7", "Guppy 5.0.15"],
-            "Guppy 5.0.7"
+            "g507",
+            ["g360", "g4011", "g507", "g5015"],
+            "g507"
         ),
         # smaller than all in list
         (
-            "Guppy 3.0.6",
-            ["Guppy 3.6.0", "Guppy 4.0.11", "Guppy 5.0.7", "Guppy 5.0.15"],
-            "Guppy 3.6.0"
+            "g306",
+            ["g360", "g4011", "g507", "g5015"],
+            "g360"
         ),
         # larger than all in list
         (
-            "Guppy 6.0.10",
-            ["Guppy 3.6.0", "Guppy 4.0.11", "Guppy 5.0.7", "Guppy 5.0.15"],
-            "Guppy 5.0.15"
+            "g6010",
+            ["g360", "g4011", "g507", "g5015"],
+            "g5015"
         ),
         # not in list
         (
-            "Guppy 5.0.7",
-            ["Guppy 3.6.0", "Guppy 4.0.11", "Guppy 5.0.15", "Guppy 5.1.4"],
-            "Guppy 4.0.11"
+            "g507",
+            ["g360", "g4011", "g5015", "g514"],
+            "g4011"
         )
     ]
 )
