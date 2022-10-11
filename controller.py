@@ -393,11 +393,15 @@ def _get_conda_packages(env):
 
 
 def _get_closest_guppy_ver(guppy_version, versions):
-    vers = sorted(versions, key=version.parse)
+    def _get_ver_tuple(ver):
+        # strip leading 'g' and then assume the next two chars
+        # are major and minor version and the remainder is build number
+        return (int(ver[1]), int(ver[2]), int(ver[3:]))
+    vers = sorted(versions, key=_get_ver_tuple)
     pos = bisect_right(
         vers,
-        version.parse(guppy_version),
-        key=version.parse
+        _get_ver_tuple(guppy_version),
+        key=_get_ver_tuple
     )
     return vers[max(0, pos - 1)]
 
