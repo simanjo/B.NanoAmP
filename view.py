@@ -3,6 +3,7 @@ from pathlib import Path
 import time
 
 import dearpygui.dearpygui as dpg
+from ErrorWindow import ErrorWindow
 
 import model
 import controller
@@ -296,28 +297,29 @@ def _select_medaka_model(sender):
     for name in "device", "cell", "guppy", "variant":
         choice = model.get_display_names(name, model_row[name])[0]
         dpg.set_value("medaka_" + name, choice)
-        dpg.configure_item("medaka_" + name, items=["--", choice])
 
 
 def _change_model_param(sender):
-    field_missing = False
     kwargs = {}
     for name in ["device", "cell", "guppy", "variant"]:
         dpg_name = "medaka_" + name
         if (val := dpg.get_value(dpg_name)) == "--":
-            kwargs[name] = None
-            field_missing = True
+            dpg.set_value("medaka_manumodel", "--")
+            return
         else:
             kwargs[name] = model.get_param_name(name, val)
-    update = controller.filter_models(**kwargs)
-    models = list(update['full_model'])
-    if not field_missing or len(models) == 1:
-        dpg.set_value("medaka_manumodel", models[0])
-        for name in "device", "cell", "guppy", "variant":
-            choice = model.get_display_names(name, update[name])[0]
-            dpg.set_value("medaka_" + name, choice)
-    else:
-        dpg.set_value("medaka_manumodel", "--")
-    for name in "device", "cell", "guppy", "variant":
-        choice = ["--"] + model.get_display_names(name, update[name])
-        dpg.configure_item("medaka_" + name, items=choice)
+
+    selected = controller.get_closest_model(**kwargs)
+    if selected is None:
+        msg = [
+            "The specified parameters do not resemble any ",
+            "of the available model choices for medaka.\n",
+            "The standard model was selected instead.\n\n",
+            "Manually selecting a more appropriate model ",
+            "or choosing a better fitting combination of\n",
+            "pore type and basecaller variant settings might ",
+            "enhance the assembly results."
+        ]
+        selected = model.get_medaka_standard_model()
+        ErrorWindow("".join(msg))
+    dpg.set_value("medaka_manumodel", selected)
