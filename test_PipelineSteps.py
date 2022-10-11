@@ -135,53 +135,6 @@ def medaka_step(setup_fastq_data, request):
         shutil.rmtree(setup_fastq_data / "medaka_polished")
 
 
-@pytest.fixture(params=[(1_000, 4_200_000)])
-# TODO: clarify suitable parameters
-def filter_step(setup_fastq_data, request):
-    min_len, bases = request.param
-    yield FilterStep(min_len, bases)
-    clean = request.node.get_closest_marker("clean").args[0]
-    if not clean:
-        shutil.rmtree(setup_fastq_data / "filtered_reads")
-
-
-@pytest.fixture
-def filter_clean():
-    yield CleanFilterStep()
-
-
-@pytest.fixture
-def assembly_step(setup_fastq_data, request):
-    yield AssemblyStep(threads=8, assembler=request.param)
-    clean = request.node.get_closest_marker("clean").args[0]
-    if not clean:
-        asm_dir = f"{setup_fastq_data.stem}_{request.param.lower()}_assembly"
-        shutil.rmtree(setup_fastq_data / asm_dir)
-
-
-@pytest.fixture
-def racon_step(setup_fastq_data, request):
-    yield RaconPolishingStep(threads=8)
-    clean = request.node.get_closest_marker("clean").args[0]
-    if not clean:
-        # racon step is built but not always used (if assembler unequals flye)
-        # so cleanup is not always required
-        shutil.rmtree(setup_fastq_data / "nanopore_mapping", ignore_errors=True)
-        racon_dir = f"{setup_fastq_data.stem}_racon_polishing"
-        shutil.rmtree(setup_fastq_data / racon_dir, ignore_errors=True)
-
-
-@pytest.fixture
-def medaka_step(setup_fastq_data, request):
-    yield MedakaPolishingStep(
-        threads=8, assembler=request.param[0],
-        model="r941_min_hac_g507", is_racon=request.param[1]
-    )
-    clean = request.node.get_closest_marker("clean").args[0]
-    if not clean:
-        shutil.rmtree(setup_fastq_data / "medaka_polished")
-
-
 @pytest.mark.clean(False)
 @pytest.mark.needs_conda
 def test_duplex_step_output(duplex_step, setup_fastq_data):
