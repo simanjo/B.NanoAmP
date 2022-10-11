@@ -27,17 +27,28 @@ def _check_and_log_output(
             log_dir = Path(h.baseFilename).parent
             break
     if proc.returncode == 0:
-        with open(log_dir / log_name, "a") as fh:
-            if not poll and proc.stdout is not None:
-                fh.write(proc.stdout.decode())
+        if poll:
+            # process used popen, output is byte buffer
+            with open(log_dir / log_name, "ab") as fh:
+                shutil.copyfileobj(proc.stderr, fh)
+            with open(log_dir / log_name, "a") as fh:
                 fh.write("\n")
-            if proc.stderr is not None:
-                fh.write(proc.stderr.decode())
-                fh.write("\n")
+        else:
+            with open(log_dir / log_name, "a") as fh:
+                if proc.stdout is not None:
+                    fh.write(proc.stdout.decode())
+                    fh.write("\n")
+                if proc.stderr is not None:
+                    fh.write(proc.stderr.decode())
+                    fh.write("\n")
     else:
-        with open(log_dir / log_name, "a") as fh:
-            if proc.stderr is not None:
-                fh.write(proc.stderr.decode())
+        if poll:
+            with open(log_dir / log_name, "ab") as fh:
+                shutil.copyfileobj(proc.stderr, fh)
+        else:
+            with open(log_dir / log_name, "a") as fh:
+                if proc.stderr is not None:
+                    fh.write(proc.stderr.decode())
         logger.error("Failed to execute current step given by")
         logger.error(f"{current_call}")
         raise PipelineStepError(step)
@@ -121,13 +132,13 @@ class FilterStep(PipelineStep):
             self.min_len, self.target_bases, wdir
         )
         proc = subprocess.Popen(
-            filtlong_call, stdout=subprocess.PIPE, env=env
+            filtlong_call, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, env=env
         )
         filtered_reads = filtered_dir / f"{wdir.stem}_filtered.fastq.gz"
 
         with gzip.open(filtered_reads, 'wb') as out_fh:
             shutil.copyfileobj(proc.stdout, out_fh)
-        # TODO: output gets dumped to console, how to capture that?
         _check_and_log_output(
             logger, proc, "FiltlongStep.log", filtlong_call, self, poll=True
         )
@@ -159,7 +170,8 @@ class AssemblyStep(PipelineStep):
                 self.threads, wdir
             )
             proc = subprocess.Popen(
-                minimap_call, stdout=subprocess.PIPE, env=env
+                minimap_call, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, env=env
             )
             read_overlap = asm_dir / f"{wdir.stem}_overlap.paf.gz"
             with gzip.open(read_overlap, 'wb') as out_fh:
@@ -173,7 +185,8 @@ class AssemblyStep(PipelineStep):
                 self.threads, wdir
             )
             proc = subprocess.Popen(
-                assembler_call, stdout=subprocess.PIPE, env=env
+                assembler_call, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, env=env
             )
             asm_output = asm_dir / f"{wdir.stem}_unpolished_assembly.gfa"
             with open(asm_output, 'wb') as out_fh:
@@ -187,7 +200,8 @@ class AssemblyStep(PipelineStep):
                 self.threads, wdir
             )
             proc = subprocess.Popen(
-                polish_call, stdout=subprocess.PIPE, env=env
+                polish_call, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, env=env
             )
             polish_output = asm_dir / f"{wdir.stem}_assembly.gfa"
             with open(polish_output, 'wb') as out_fh:
@@ -232,7 +246,8 @@ class AssemblyStep(PipelineStep):
                 self.threads, wdir
             )
             proc = subprocess.Popen(
-                assembler_call, stdout=subprocess.PIPE, env=env
+                assembler_call, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, env=env
             )
             asm_output = asm_dir / "assembly.fasta"
             with open(asm_output, 'wb') as out_fh:
@@ -297,7 +312,8 @@ class RaconPolishingStep(PipelineStep):
             self.threads, wdir
         )
         proc = subprocess.Popen(
-            minimap_call, stdout=subprocess.PIPE, env=env
+            minimap_call, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, env=env
         )
         mapping = mapping_dir / "mapping.sam"
         with open(mapping, 'wb') as out_fh:
@@ -311,7 +327,8 @@ class RaconPolishingStep(PipelineStep):
             self.threads, wdir
         )
         proc = subprocess.Popen(
-            polishing_call, stdout=subprocess.PIPE, env=env
+            polishing_call, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, env=env
         )
         polish_out = polish_dir / "assembly.fasta"
         with open(polish_out, 'wb') as out_fh:
