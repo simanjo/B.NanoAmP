@@ -173,7 +173,6 @@ def _calculate_coverage(dir):
         ["awk", "{print $NF-$(NF-1);}"], stdin=wc_proc.stdout,
         capture_output=True
     )
-    print(f"Having coverage of {awk_proc_2.stdout.decode()[:-1]} in {dir}")
     bases = int(awk_proc_2.stdout.decode())
     genome_size = dpg.get_value("genome_size") * 1_000_000
     if sys.version_info < (3, 10):
@@ -187,7 +186,6 @@ def check_coverages(dir):
         return None
     msg = []
     for folder in _fastq_folder_iter(dir):
-        print(f"Calculating coverage in {folder}")
         cov = _calculate_coverage(folder)
         if folder == dir:
             folder_name = folder.relative_to(dir.parent)
