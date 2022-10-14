@@ -183,9 +183,13 @@ def _add_general_settings():
 def _change_genome_size(sender, app_data):
     # wait shortly and check whether the value has changed
     val = dpg.get_value(sender)
-    time.sleep(2)
+    time.sleep(1)
     if dpg.get_value(sender) == val:
+        dpg.configure_item("pipe_active_ind", show=True)
+        folder = Path(dpg.get_value("bcfolder"))
+        dpg.add_text(f"Checking coverage in {folder}.", parent="log_area")
         controller.check_coverages(Path(dpg.get_value("bcfolder")))
+        dpg.configure_item("pipe_active_ind", show=False)
 
 
 def _add_filtlong_settings():
