@@ -399,12 +399,23 @@ def _get_closest_guppy_ver(guppy_version, versions):
         # are major and minor version and the remainder is build number
         return (int(ver[1]), int(ver[2]), int(ver[3:]))
     vers = sorted(versions, key=_get_ver_tuple)
-    pos = bisect_right(
-        vers,
-        _get_ver_tuple(guppy_version),
-        key=_get_ver_tuple
-    )
-    return vers[max(0, pos - 1)]
+    # bisect has key argument only since python 3.10
+    if sys.version_info < (3, 10):
+        last = vers[0]
+        for ver in vers:
+            if guppy_version == ver:
+                return ver
+            if _get_ver_tuple(guppy_version) < _get_ver_tuple(ver):
+                return last
+            last = ver
+        return last
+    else:
+        pos = bisect_right(
+            vers,
+            _get_ver_tuple(guppy_version),
+            key=_get_ver_tuple
+        )
+        return vers[max(0, pos - 1)]
 
 
 def get_closest_model(cell, device, guppy, variant):
