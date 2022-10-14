@@ -146,7 +146,14 @@ def _choose_dir(sender, app_data) -> None:
     dir = app_data['file_path_name']
     dpg.set_value("bcfolder", dir)
     dpg.configure_item("bcfolder", show=True)
-    controller.check_coverages(Path(dir))
+    dpg.configure_item("pipe_active_ind", show=True)
+    dpg.add_text(f"Checking coverage in {dir}.", parent="log_area")
+    covs = controller.check_coverages(Path(dir))
+    cov_msg = [f"{folder}: {round(cov, 2)}" for folder, cov in covs.items()]
+    dpg.add_text(
+        "Estimated coverages: " + ", ".join(cov_msg), parent="log_area"
+    )
+    dpg.configure_item("pipe_active_ind", show=False)
 
 
 def _add_general_settings():
@@ -189,7 +196,7 @@ def _change_genome_size(sender, app_data):
         folder = Path(dpg.get_value("bcfolder"))
         dpg.add_text(f"Checking coverage in {folder}.", parent="log_area")
         covs = controller.check_coverages(Path(dpg.get_value("bcfolder")))
-        cov_msg = [f"{folder}: {cov}" for folder, cov in covs.items()]
+        cov_msg = [f"{folder}: {round(cov, 2)}" for folder, cov in covs.items()]
         dpg.add_text(
             "Estimated coverages: " + ", ".join(cov_msg), parent="log_area"
         )
