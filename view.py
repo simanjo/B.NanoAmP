@@ -150,7 +150,7 @@ def _choose_dir(sender, app_data) -> None:
 
 
 def _add_general_settings():
-    dpg.add_text("General Settings")
+    dpg.add_text("General Settings:")
     with dpg.group(horizontal=True):
         dpg.add_button(
             label="Select Base Folder",
@@ -189,7 +189,7 @@ def _change_genome_size(sender, app_data):
 
 
 def _add_filtlong_settings():
-    dpg.add_text("Filtlong Settings")
+    dpg.add_text("Filtlong Settings:")
     dpg.add_input_int(
         label="min_length",
         tag="filtlong_minlen",
