@@ -185,6 +185,7 @@ def check_coverages(dir):
         ErrorWindow(f"The given path {dir} is not a directory.")
         return None
     msg = []
+    results = {}
     for folder in _fastq_folder_iter(dir):
         cov = _calculate_coverage(folder)
         if folder == dir:
@@ -199,8 +200,10 @@ def check_coverages(dir):
             msg.append(f"Coverage in {folder_name} is below 50x. ")
             msg.append("Racon polishing is recommended, ")
             msg.append("to potentially enhance typing.\n")
+        results[f"{folder_name}"] = cov
     if msg:
         ErrorWindow("".join(msg))
+    return results
 
 
 def _fastq_folder_iter(dir):

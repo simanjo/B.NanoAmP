@@ -188,7 +188,11 @@ def _change_genome_size(sender, app_data):
         dpg.configure_item("pipe_active_ind", show=True)
         folder = Path(dpg.get_value("bcfolder"))
         dpg.add_text(f"Checking coverage in {folder}.", parent="log_area")
-        controller.check_coverages(Path(dpg.get_value("bcfolder")))
+        covs = controller.check_coverages(Path(dpg.get_value("bcfolder")))
+        cov_msg = [f"{folder}: {cov}" for folder, cov in covs.items()]
+        dpg.add_text(
+            "Estimated coverages: " + ", ".join(cov_msg), parent="log_area"
+        )
         dpg.configure_item("pipe_active_ind", show=False)
 
 
