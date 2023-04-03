@@ -1,7 +1,8 @@
 # B.NanoAmP
 Bacterial Nanopore Assembly Pipeline
 
-GUI for building assembly pipelines for Nanopore reads.
+GUI for building assembly pipelines for Nanopore reads, accompanying the paper\
+[Wagner GE, Dabernig-Heinz J, Lipp M, Cabal A, Simantzik J, Kohl M, Scheiber M, Lichtenegger S, Ehricht R, Leitner E, Ruppitsch W, Steinmetz I. 2023. Real-Time Nanopore Q20+ Sequencing Enables Extremely Fast and Accurate Core Genome MLST Typing and Democratizes Access to High-Resolution Bacterial Pathogen Surveillance. Journal of Clinical Microbiology 0:e01631-22](https://doi.org/10.1128/jcm.01631-22).
 
 [Filtlong](https://github.com/rrwick/Filtlong) filtering
 
